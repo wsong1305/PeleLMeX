@@ -8,13 +8,16 @@
 #include <AMReX_MultiFabUtil.H>
 
 // Mimic AMReX Derive behavior but without StateDescriptor
+// Forward declaration of PeleLM
+class PeleLM;
 
-typedef void (*PeleLMDeriveFunc) (const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int ncomp,
+typedef void (*PeleLMDeriveFunc) (PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int ncomp,
                                   const amrex::FArrayBox& statefab, const amrex::FArrayBox& pressfab,
                                   const amrex::Geometry& geomdata,
                                   amrex::Real time, const amrex::Vector<amrex::BCRec> &bcrec, int level);
 
-typedef void (*PeleLMMFVecDeriveFunc) (amrex::Vector<amrex::MultiFab *> derfab, int dcomp, int ncomp,
+typedef void (*PeleLMMFVecDeriveFunc) (PeleLM* a_pelelm, 
+                                       amrex::Vector<amrex::MultiFab *> derfab, int dcomp, int ncomp,
                                        amrex::Vector<const amrex::MultiFab *> statefab,
                                        amrex::Vector<const amrex::MultiFab *> pressfab,
                                        const amrex::Geometry &geomdata,
