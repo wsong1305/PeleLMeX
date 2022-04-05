@@ -620,6 +620,12 @@ class PeleLM : public amrex::AmrCore {
    // Typical values
    void setTypicalValues(const PeleLM::TimeStamp &a_time, int is_init = 0);
    void updateTypicalValuesChem();
+
+   // Mixture fraction
+   void initMixtureFraction();
+   void parseComposition(amrex::Vector<std::string> compositionIn,
+                         std::string                compositionType,
+                         amrex::Real               *massFrac);
    //-----------------------------------------------------------------------------
 
 #ifdef AMREX_USE_EB
@@ -837,6 +843,7 @@ class PeleLM : public amrex::AmrCore {
    amrex::Vector<amrex::MultiFab* > getDivUVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getDiffusivityVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getViscosityVect(const PeleLM::TimeStamp &a_time);
+   amrex::Vector<amrex::MultiFab* > getIRVect();
 #ifdef PELE_USE_EFIELD
    amrex::Vector<amrex::MultiFab* > getPhiVVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getnEVect(const PeleLM::TimeStamp &a_time);
@@ -1087,6 +1094,20 @@ class PeleLM : public amrex::AmrCore {
    std::string m_diff_redist_type = "FluxRedist";
 #endif
    //-----------------------------------------------------------------------------
+
+   //-----------------------------------------------------------------------------
+   // Combustion physics
+   int fuelID = -1;
+
+   // Mixture fraction
+   amrex::Array<amrex::Real, 4> Beta_mix;
+   amrex::Array<amrex::Real, NUM_SPECIES> spec_Bilger_fact;
+   amrex::Real Zfu = -1.0;
+   amrex::Real Zox = -1.0;
+
+   // Progress variable
+   //-----------------------------------------------------------------------------
+
 
    //-----------------------------------------------------------------------------
    // Linear Solvers
