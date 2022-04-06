@@ -336,6 +336,7 @@ void PeleLM::addRhoYFluxes(const Array<const MultiFab*,AMREX_SPACEDIM> &a_fluxes
 
 void PeleLM::writeTemporals()
 {
+   BL_PROFILE("PeleLM::writeTemporals()"); 
    //----------------------------------------------------------------
    // Mass balance
    if (m_do_massBalance && !m_incompressible) {
