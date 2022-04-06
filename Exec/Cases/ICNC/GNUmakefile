@@ -3,6 +3,7 @@ AMREX_HOME         ?= ${TOP}/amrex
 PELELMEX_HOME      ?= ${TOP}/PeleLMeX
 PELE_PHYSICS_HOME  ?= ${TOP}/PelePhysics
 AMREX_HYDRO_HOME   ?= ${TOP}/AMReX-Hydro
+HYPRE_HOME         = /global/homes/e/esclapez/CODES/hypre/install
 
 
 # AMReX
@@ -12,7 +13,7 @@ PRECISION       = DOUBLE
 VERBOSE         = FALSE
 TINY_PROFILE    = FALSE
 USE_EB 			= TRUE
-USE_HYPRE		= FALSE
+USE_HYPRE		= TRUE
 
 # Compilation
 COMP            = gnu
