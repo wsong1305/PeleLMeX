@@ -225,7 +225,7 @@ void pelelm_derprogvar (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int 
         for (int n = 0; n<NUM_SPECIES; ++n) {
             prog_var(i,j,k) += ( rhoY(i,j,k,n) * Cweights[n] ) * rho_inv;
         }
-        prog_var(i,j,k) += temp(i,j,k) + Cweights[NUM_SPECIES];
+        prog_var(i,j,k) += temp(i,j,k) * Cweights[NUM_SPECIES];
         if (revert) {
            prog_var(i,j,k) = 1.0 - ( prog_var(i,j,k) - C0_lcl ) * denom_inv;
         } else {
@@ -278,12 +278,15 @@ void pelelm_derSDF(PeleLM* a_pelelm,
     a_pelelm->getDiffusionOp()->computeGradient(GetVecOfArrOfPtrs(gradC),
                                                 {},           // don't need the laplacian out
                                                 GetVecOfConstPtrs(progVar),
-                                                a_bcrecs[0], do_avgDown);
+                                                a_bcrecs[FIRSTSPEC], do_avgDown);
     
     // Normalize
     for (int lev=0; lev<nlevels; ++lev) {
         MultiFab cellavg_gradient(statevec[lev]->boxArray(), statevec[lev]->DistributionMap(), AMREX_SPACEDIM, 0);
         average_face_to_cellcenter(cellavg_gradient, 0, GetArrOfConstPtrs(gradC[lev]));
+#ifdef AMREX_USE_EB
+        EB_set_covered(cellavg_gradient,0.0);
+#endif
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
