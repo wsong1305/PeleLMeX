@@ -87,8 +87,9 @@ void PeleLM::Setup() {
 #endif
    }
 
-   // Mixture fraction
+   // Mixture fraction & Progress variable
    initMixtureFraction();
+   initProgressVariable();
 
    // Initiliaze turbulence injection
    turb_inflow.init(Geom(0));
@@ -606,6 +607,12 @@ void PeleLM::derivedSetup()
 
    // Mixture fraction
    derive_lst.add("mixFrac",IndexType::TheCellType(),1,pelelm_dermixfrac,the_same_box);
+
+   // Progress variable
+   derive_lst.add("progvar",IndexType::TheCellType(),1,pelelm_derprogvar,the_same_box);
+
+   // Surface density function
+   derive_lst.add("SDF",IndexType::TheCellType(),1,pelelm_derSDF,the_same_box);
 
 #ifdef PELE_USE_EFIELD
    // Charge distribution

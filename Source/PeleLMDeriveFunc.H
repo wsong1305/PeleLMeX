@@ -10,6 +10,7 @@
 
 class PeleLM;
 
+// Single level derived
 void pelelm_dermassfrac (PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int ncomp,
                          const amrex::FArrayBox& statefab, const amrex::FArrayBox& pressfab,
                          const amrex::Geometry& geomdata,
@@ -39,4 +40,16 @@ void pelelm_dermixfrac (PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox
                         const amrex::FArrayBox& statefab, const amrex::FArrayBox& pressfab,
                         const amrex::Geometry& geomdata,
                         amrex::Real time, const amrex::Vector<amrex::BCRec> &bcrec, int level);
+
+void pelelm_derprogvar (PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int ncomp,
+                        const amrex::FArrayBox& statefab, const amrex::FArrayBox& pressfab,
+                        const amrex::Geometry& geomdata,
+                        amrex::Real time, const amrex::Vector<amrex::BCRec> &bcrec, int level);
+
+// Multi level derived
+// Surface Density Function
+void pelelm_derSDF(PeleLM* a_pelelm,
+                   amrex::Vector<amrex::MultiFab *> dervec, int dcomp, int ncomp,
+                   amrex::Vector<const amrex::MultiFab *> statevec, amrex::Vector<const amrex::MultiFab *> pressvec,
+                   const amrex::Vector<amrex::Geometry>  &a_geoms, amrex::Real time, const amrex::Vector<amrex::BCRec> &a_bcrecs);
 #endif

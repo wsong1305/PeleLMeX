@@ -345,21 +345,25 @@ void PeleLM::writeTemporals()
    //----------------------------------------------------------------
    // State
    // Get kinetic energy
-   Vector<std::unique_ptr<MultiFab>> kinEnergy(finest_level + 1);
+   Vector<std::unique_ptr<MultiFab>> tempholder;
    for (int lev = 0; lev <= finest_level; ++lev) {
-      kinEnergy[lev] = derive("kinetic_energy", m_cur_time, lev, 0);
+      tempholder.push_back(std::make_unique<MultiFab> (grids[lev],dmap[lev],1,0,MFInfo(), Factory(lev))); 
    }
-   Real kinetic_energy = MFSum(GetVecOfConstPtrs(kinEnergy),0);
+   derive(GetVecOfPtrs(tempholder),0,"kinetic_energy", m_cur_time,0);
+   Real kinetic_energy = MFSum(GetVecOfConstPtrs(tempholder),0);
 
    // Combustion
    Real fuelConsumptionInt = 0.0;
    Real heatReleaseRateInt = 0.0;
+   Real SDFintegral = 0.0;
    if (fuelID > 0 && !(m_chem_integrator == "ReactorNull")) {
        fuelConsumptionInt =  MFSum(GetVecOfConstPtrs(getIRVect()),fuelID);
        for (int lev = 0; lev <= finest_level; ++lev) { 
-          getHeatRelease(lev, kinEnergy[lev].get());  // Re-use kinEnergy container
+          getHeatRelease(lev, tempholder[lev].get());  // Re-use kinEnergy container
        }
-       heatReleaseRateInt = MFSum(GetVecOfConstPtrs(kinEnergy),0);
+       heatReleaseRateInt = MFSum(GetVecOfConstPtrs(tempholder),0);
+       derive(GetVecOfPtrs(tempholder),0,"SDF", m_cur_time,0);
+       SDFintegral = MFSum(GetVecOfConstPtrs(tempholder),0);
    }
 
    // Get min/max/mean for non-species state components
@@ -369,6 +373,7 @@ void PeleLM::writeTemporals()
                 << " " << m_pNew                                // Thermo. pressure
                 << " " << fuelConsumptionInt                    // Integ fuel burning rate
                 << " " << heatReleaseRateInt                    // Integ heat release rate
+                << " " << SDFintegral                           // Estimate of the flame surface area
                 << " \n";
    tmpStateFile.flush(); 
 }

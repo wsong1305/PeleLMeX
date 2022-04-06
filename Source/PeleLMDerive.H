@@ -17,11 +17,11 @@ typedef void (*PeleLMDeriveFunc) (PeleLM* a_pelelm, const amrex::Box& bx, amrex:
                                   amrex::Real time, const amrex::Vector<amrex::BCRec> &bcrec, int level);
 
 typedef void (*PeleLMMFVecDeriveFunc) (PeleLM* a_pelelm, 
-                                       amrex::Vector<amrex::MultiFab *> derfab, int dcomp, int ncomp,
-                                       amrex::Vector<const amrex::MultiFab *> statefab,
-                                       amrex::Vector<const amrex::MultiFab *> pressfab,
-                                       const amrex::Geometry &geomdata,
-                                       amrex::Real time, const amrex::Vector<amrex::BCRec> &bcrec);
+                                       amrex::Vector<amrex::MultiFab *> dervec, int dcomp, int ncomp,
+                                       amrex::Vector<const amrex::MultiFab *> statevec,
+                                       amrex::Vector<const amrex::MultiFab *> pressvec,
+                                       const amrex::Vector<amrex::Geometry>  &a_geoms,
+                                       amrex::Real time, const amrex::Vector<amrex::BCRec> &a_bcrecs);
 class PeleLMDeriveRec
 {  
    friend class PeleLMDeriveList;
@@ -65,6 +65,7 @@ public:
    * \brief The DeriveFunc used to calculate the derived type.
    */
    PeleLMDeriveFunc derFunc () const noexcept;
+   PeleLMMFVecDeriveFunc derMFVecFunc () const noexcept;
 
    DeriveBoxMap boxMap () const noexcept;
 
@@ -129,6 +130,42 @@ protected:
    PeleLMDeriveRec (const std::string&   name,
                     amrex::IndexType     result_type,
                     int                  nvar_derive,
+                    PeleLMMFVecDeriveFunc     der_func,
+                    DeriveBoxMap         box_map,
+                    amrex::Interpolater* interp = &amrex::pc_interp);
+
+   /**
+   * \brief Constructor.
+   *
+   * \param name
+   * \param result_type
+   * \param nvar_derive
+   * \param var_names
+   * \param der_func
+   * \param box_map
+   * \param interp
+   */
+   PeleLMDeriveRec (const std::string&         name,
+                    amrex::IndexType           result_type,
+                    int                        nvar_derive,
+                    amrex::Vector<std::string> &var_names,
+                    PeleLMMFVecDeriveFunc     der_func,
+                    DeriveBoxMap               box_map,
+                    amrex::Interpolater*       interp = &amrex::pc_interp);
+
+   /**
+   * \brief Constructor.
+   *
+   * \param name
+   * \param result_type
+   * \param nvar_derive
+   * \param der_func
+   * \param box_map
+   * \param interp
+   */
+   PeleLMDeriveRec (const std::string&   name,
+                    amrex::IndexType     result_type,
+                    int                  nvar_derive,
                     DeriveBoxMap         box_map,
                     amrex::Interpolater* interp = &amrex::pc_interp);
 
@@ -168,6 +205,7 @@ private:
 
    //! Function that computes derived quantity from state variables.
    PeleLMDeriveFunc func = nullptr;
+   PeleLMMFVecDeriveFunc mfvecfunc = nullptr;
 
    //! Interpolater for mapping crse grid derived data to finer levels.
    amrex::Interpolater* mapper = nullptr;
@@ -242,6 +280,42 @@ public:
              int                           nvar_derive,
              amrex::Vector<std::string>&   var_names,
              PeleLMDeriveFunc              der_func,
+             PeleLMDeriveRec::DeriveBoxMap box_map,
+             amrex::Interpolater*          interp = &amrex::pc_interp);
+
+   /**
+   * \brief Adds another entry to the registry.
+   *
+   * \param name
+   * \param result_type
+   * \param nvar_derive
+   * \param der_func
+   * \param box_map
+   * \param interp
+   */
+   void add (const std::string&            name,
+             amrex::IndexType              result_type,
+             int                           nvar_derive,
+             PeleLMMFVecDeriveFunc              der_func,
+             PeleLMDeriveRec::DeriveBoxMap box_map,
+             amrex::Interpolater*          interp = &amrex::pc_interp);
+
+   /**
+   * \brief Adds another entry to the registry.
+   *
+   * \param name
+   * \param result_type
+   * \param nvar_derive
+   * \param var_names
+   * \param der_func
+   * \param box_map
+   * \param interp
+   */
+   void add (const std::string&            name,
+             amrex::IndexType              result_type,
+             int                           nvar_derive,
+             amrex::Vector<std::string>&   var_names,
+             PeleLMMFVecDeriveFunc              der_func,
              PeleLMDeriveRec::DeriveBoxMap box_map,
              amrex::Interpolater*          interp = &amrex::pc_interp);
 

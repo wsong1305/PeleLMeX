@@ -4,10 +4,11 @@
 #include <PelePhysics.H>
 #include <EOS_Extension.H>
 #include <mechanism.H>
+#include <PeleLM.H>
 
 using namespace amrex;
 
-void pelelm_derchargedist(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derchargedist(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                           const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                           const amrex::Geometry& /*geomdata*/,
                           amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &/*bcrec*/, int /*level*/)
@@ -31,7 +32,7 @@ void pelelm_derchargedist(const amrex::Box& bx, amrex::FArrayBox& derfab, int dc
    });
 }
 
-void pelelm_derefx(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derefx(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                    const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                    const amrex::Geometry& geomdata,
                    amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &bcrec, int /*level*/)
@@ -59,7 +60,7 @@ void pelelm_derefx(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, in
    });
 }
 
-void pelelm_derLorentzx(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derLorentzx(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                         const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                         const amrex::Geometry& geomdata,
                         amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &bcrec, int /*level*/)
@@ -100,7 +101,7 @@ void pelelm_derLorentzx(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcom
 }
 
 #if (AMREX_SPACEDIM > 1)
-void pelelm_derefy(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derefy(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                    const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                    const amrex::Geometry& geomdata,
                    amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &bcrec, int /*level*/)
@@ -128,7 +129,7 @@ void pelelm_derefy(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, in
    });
 }
 
-void pelelm_derLorentzy(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derLorentzy(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                         const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                         const amrex::Geometry& geomdata,
                         amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &bcrec, int /*level*/)
@@ -169,7 +170,7 @@ void pelelm_derLorentzy(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcom
 }
 
 #if (AMREX_SPACEDIM > 2)
-void pelelm_derefz(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derefz(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                    const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                    const amrex::Geometry& geomdata,
                    amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &bcrec, int /*level*/)
@@ -197,7 +198,7 @@ void pelelm_derefz(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, in
    });
 }
 
-void pelelm_derLorentzz(const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
+void pelelm_derLorentzz(PeleLM* a_pelelm, const amrex::Box& bx, amrex::FArrayBox& derfab, int dcomp, int /*ncomp*/,
                         const amrex::FArrayBox& statefab, const amrex::FArrayBox& /*pressfab*/,
                         const amrex::Geometry& geomdata,
                         amrex::Real /*time*/, const amrex::Vector<amrex::BCRec> &bcrec, int /*level*/)

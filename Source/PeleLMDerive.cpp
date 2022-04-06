@@ -38,6 +38,39 @@ PeleLMDeriveRec::PeleLMDeriveRec (const std::string&   a_name,
 PeleLMDeriveRec::PeleLMDeriveRec (const std::string& a_name,
                                   IndexType          result_type,
                                   int                nvar_derive,
+                                  PeleLMMFVecDeriveFunc   der_func,
+                                  DeriveBoxMap       box_map,
+                                  Interpolater*      a_interp)
+    :
+    derive_name(a_name),
+    variable_names(),
+    der_type(result_type),
+    n_derive(nvar_derive),
+    mfvecfunc(der_func),
+    mapper(a_interp),
+    bx_map(box_map)
+{}
+
+PeleLMDeriveRec::PeleLMDeriveRec (const std::string&   a_name,
+                                  IndexType            result_type,
+                                  int                  nvar_derive,
+                                  Vector<std::string>& var_names,
+                                  PeleLMMFVecDeriveFunc     der_func,
+                                  DeriveBoxMap         box_map,
+                                  Interpolater*        a_interp)
+    :
+    derive_name(a_name),
+    variable_names(var_names),
+    der_type(result_type),
+    n_derive(nvar_derive),
+    mfvecfunc(der_func),
+    mapper(a_interp),
+    bx_map(box_map)
+{}
+
+PeleLMDeriveRec::PeleLMDeriveRec (const std::string& a_name,
+                                  IndexType          result_type,
+                                  int                nvar_derive,
                                   DeriveBoxMap       box_map,
                                   Interpolater*      a_interp)
     :
@@ -89,6 +122,12 @@ PeleLMDeriveFunc
 PeleLMDeriveRec::derFunc () const noexcept
 {
     return func;
+}
+
+PeleLMMFVecDeriveFunc
+PeleLMDeriveRec::derMFVecFunc () const noexcept
+{
+    return mfvecfunc;
 }
 
 PeleLMDeriveRec::DeriveBoxMap
@@ -153,6 +192,29 @@ PeleLMDeriveList::add (const std::string&            name,
                        int                           nvar_der,
                        Vector<std::string>&          vars,
                        PeleLMDeriveFunc              der_func,
+                       PeleLMDeriveRec::DeriveBoxMap bx_map,
+                       Interpolater*                 interp)
+{
+    lst.push_back(PeleLMDeriveRec(name,result_type,nvar_der,vars,der_func,bx_map,interp));
+}
+
+void
+PeleLMDeriveList::add (const std::string&            name,
+                       IndexType                     result_type,
+                       int                           nvar_der,
+                       PeleLMMFVecDeriveFunc              der_func,
+                       PeleLMDeriveRec::DeriveBoxMap bx_map,
+                       Interpolater*                 interp)
+{
+    lst.push_back(PeleLMDeriveRec(name,result_type,nvar_der,der_func,bx_map,interp));
+}
+
+void
+PeleLMDeriveList::add (const std::string&            name,
+                       IndexType                     result_type,
+                       int                           nvar_der,
+                       Vector<std::string>&          vars,
+                       PeleLMMFVecDeriveFunc              der_func,
                        PeleLMDeriveRec::DeriveBoxMap bx_map,
                        Interpolater*                 interp)
 {

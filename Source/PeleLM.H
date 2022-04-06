@@ -28,7 +28,7 @@ class PeleLM : public amrex::AmrCore {
 
    public:
 
-   enum TimeStamp { AmrOldTime, AmrHalfTime, AmrNewTime };
+   enum TimeStamp { AmrOldTime, AmrHalfTime, AmrNewTime, BogusTime };
 
    // constructor
    PeleLM();
@@ -606,6 +606,10 @@ class PeleLM : public amrex::AmrCore {
                                            amrex::Real a_time, int lev, int nGrow);
    std::unique_ptr<amrex::MultiFab> deriveComp(const std::string &a_name,
                                                amrex::Real a_time, int lev, int nGrow);
+   void derive(const amrex::Vector<amrex::MultiFab *> &a_dervec,
+               int dercomp,
+               const std::string &a_name,
+               amrex::Real a_time, int nGrow);
 
    // Evaluate function
    void MLevaluate(const amrex::Vector<amrex::MultiFab*> &a_MFVec,
@@ -621,11 +625,15 @@ class PeleLM : public amrex::AmrCore {
    void setTypicalValues(const PeleLM::TimeStamp &a_time, int is_init = 0);
    void updateTypicalValuesChem();
 
-   // Mixture fraction
+   // Mixture fraction & progress variables
    void initMixtureFraction();
    void parseComposition(amrex::Vector<std::string> compositionIn,
                          std::string                compositionType,
                          amrex::Real               *massFrac);
+   void parseVars(const amrex::Vector<std::string> &a_varNames,
+                  const amrex::Vector<std::string> &a_stringIn,
+                  amrex::Vector<amrex::Real> &a_rVars);
+   void initProgressVariable();
    //-----------------------------------------------------------------------------
 
 #ifdef AMREX_USE_EB
@@ -834,12 +842,25 @@ class PeleLM : public amrex::AmrCore {
       }
    }
 
+   PeleLM::TimeStamp getTimeStamp(int lev, const amrex::Real &a_time) const {
+      if ( std::abs(a_time-m_t_old[lev]) < 1e-14 ) {
+         return AmrOldTime;
+      } else if ( std::abs(a_time-m_t_new[lev]) < 1e-14 ) {
+         return AmrNewTime;
+      } else if ( std::abs(a_time-0.5 * ( m_t_old[lev] + m_t_new[lev])) < 1e-14 ) {
+         return AmrHalfTime;
+      } else {
+         return BogusTime;
+      }
+   }
+
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getStateVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getVelocityVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getDensityVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getSpeciesVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getRhoHVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getTempVect(const PeleLM::TimeStamp &a_time);
+   amrex::Vector<std::unique_ptr<amrex::MultiFab> > getPressVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getDivUVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getDiffusivityVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getViscosityVect(const PeleLM::TimeStamp &a_time);
@@ -1106,6 +1127,11 @@ class PeleLM : public amrex::AmrCore {
    amrex::Real Zox = -1.0;
 
    // Progress variable
+   // C is a linear combination of Ys and T
+   amrex::GpuArray<amrex::Real,NUM_SPECIES+1> m_Cweights;
+   amrex::Real m_C0 = -1.0;
+   amrex::Real m_C1 = -1.0;
+   int m_Crevert = 0;           // Flip the definition with 1 - ∑_k wgt*v_k
    //-----------------------------------------------------------------------------
 
 

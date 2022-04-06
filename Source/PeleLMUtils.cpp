@@ -504,6 +504,7 @@ PeleLM::derive(const std::string &a_name,
    const PeleLMDeriveRec* rec = derive_lst.get(a_name);
 
    if (rec) {        // This is a derived variable
+      int isSingleLevelRec = (rec->derFunc() == nullptr) ? 0 : 1;
       mf.reset(new MultiFab(grids[lev], dmap[lev], rec->numDerive(), nGrow));
       std::unique_ptr<MultiFab> statemf = fillPatchState(lev, a_time, m_nGrowState);
       // Get pressure: TODO no fillpatch for pressure just yet, simply get new state
@@ -528,6 +529,62 @@ PeleLM::derive(const std::string &a_name,
    }
 
    return mf;
+}
+
+// Return a Vec<unique_ptr> with the entire derive
+void
+PeleLM::derive(const Vector<MultiFab *> &a_dervec,
+               int dercomp,
+               const std::string &a_name,
+               Real               a_time,
+               int                nGrow)
+{
+   AMREX_ASSERT(nGrow >= 0);
+
+   bool itexists = derive_lst.canDerive(a_name) || isStateVariable(a_name);
+
+   if ( !itexists ) {
+      amrex::Error("PeleLM::derive(): unknown variable: "+a_name);
+   }
+
+   TimeStamp tStamp = getTimeStamp(0, a_time); 
+
+   const PeleLMDeriveRec* rec = derive_lst.get(a_name);
+
+   if (rec) {        // This is a derived variable
+      // The derive is define on single level or the entire hierarchy ?
+      int isSingleLevelRec = (rec->derFunc() == nullptr) ? 0 : 1;
+
+      if (isSingleLevelRec) {
+         for (int lev = 0; lev <= finest_level; ++lev) {
+            auto ldata_p = getLevelDataPtr(lev,tStamp);
+            auto stateBCs = fetchBCRecArray(VELX,NVAR);
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+            for (MFIter mfi(*a_dervec[lev],TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.growntilebox(nGrow);
+                FArrayBox& derfab = (*a_dervec[lev])[mfi];
+                FArrayBox const& statefab = ldata_p->state[mfi];
+                FArrayBox const& pressfab = ldata_p->press[mfi];
+                rec->derFunc()(this, bx, derfab, dercomp, rec->numDerive(), statefab, pressfab, geom[lev], a_time, stateBCs, lev);
+            }
+         }
+      } else {
+         auto stateBCs = fetchBCRecArray(VELX,NVAR);
+         rec->derMFVecFunc()(this, a_dervec, dercomp, rec->numDerive(),
+                             GetVecOfConstPtrs(getStateVect(tStamp)),
+                             GetVecOfConstPtrs(getPressVect(tStamp)),
+                             Geom(0,finest_level), a_time, stateBCs);
+      }
+   } else {          // This is a state variable
+      int idx = stateVariableIndex(a_name);
+      for (int lev = 0; lev <= finest_level; ++lev) {
+         auto ldata_p = getLevelDataPtr(lev,tStamp);
+         MultiFab::Copy(*a_dervec[lev],ldata_p->state,idx,dercomp,1,nGrow);
+      }
+   }
 }
 
 // Return a unique_ptr with only the required component of a derive
@@ -1175,6 +1232,79 @@ PeleLM::initMixtureFraction()
 }
 
 void
+PeleLM::initProgressVariable()
+{
+    Vector<std::string> varNames;
+    pele::physics::eos::speciesNames<pele::physics::PhysicsType::eos_type>(varNames);
+    varNames.push_back("temp");
+
+    auto eos = pele::physics::PhysicsType::eos();
+
+    ParmParse pp("peleLM");
+    std::string Cformat;
+    int hasUserC = pp.contains("progressVariable.format");
+    if ( hasUserC ) {
+        pp.query("progressVariable.format", Cformat);
+        if ( !Cformat.compare("Cantera")) {             // use a Cantera-like format with <entry>:<weight>, default in 0.0
+            // Weights
+            Vector<std::string> stringIn;
+            Vector<Real> weightsIn(NUM_SPECIES+1,0.0);
+            int entryCount = pp.countval("progressVariable.weights");
+            stringIn.resize(entryCount);
+            pp.getarr("progressVariable.weights",stringIn,0,entryCount);
+            parseVars(varNames, stringIn, weightsIn); 
+
+            // Cold size/Hot side
+            Vector<Real> coldState(NUM_SPECIES+1,0.0);
+            entryCount = pp.countval("progressVariable.coldState");
+            stringIn.resize(entryCount);
+            pp.getarr("progressVariable.coldState",stringIn,0,entryCount);
+            parseVars(varNames, stringIn, coldState); 
+            Vector<Real> hotState(NUM_SPECIES+1,0.0);
+            entryCount = pp.countval("progressVariable.hotState");
+            stringIn.resize(entryCount);
+            pp.getarr("progressVariable.hotState",stringIn,0,entryCount);
+            parseVars(varNames, stringIn, hotState); 
+            m_C0 = 0.0;
+            m_C1 = 0.0;
+            for (int i = 0; i < NUM_SPECIES+1; ++i) {
+                m_Cweights[i] = weightsIn[i];
+                m_C0 += coldState[i] * m_Cweights[i];
+                m_C1 += hotState[i] * m_Cweights[i];
+            }
+        } else if ( !Cformat.compare("RealList")) {     // use a list of Real. MUST contains an entry for each species+Temp
+            // Weights
+            Vector<Real> weightsIn;
+            int entryCount = pp.countval("progressVariable.weights");
+            AMREX_ALWAYS_ASSERT(entryCount==NUM_SPECIES+1);
+            weightsIn.resize(entryCount);
+            pp.getarr("progressVariable.weights",weightsIn,0,entryCount);
+            for (int i=0; i<NUM_SPECIES; ++i) {
+               m_Cweights[i] = weightsIn[i];
+            }
+            // Cold size/Hot side
+            entryCount = pp.countval("progressVariable.coldState");
+            AMREX_ALWAYS_ASSERT(entryCount==NUM_SPECIES+1);
+            Vector<Real> coldState(entryCount);
+            pp.getarr("progressVariable.coldState",coldState,0,entryCount);
+            entryCount = pp.countval("progressVariable.hotState");
+            AMREX_ALWAYS_ASSERT(entryCount==NUM_SPECIES+1);
+            Vector<Real> hotState(entryCount);
+            pp.getarr("progressVariable.hotState",hotState,0,entryCount);
+            m_C0 = 0.0;
+            m_C1 = 0.0;
+            for (int i = 0; i < NUM_SPECIES+1; ++i) {
+                m_C0 += coldState[i] * m_Cweights[i];
+                m_C1 += hotState[i] * m_Cweights[i];
+            }
+        } else {
+            Abort("Unknown progressVariable.format ! Should be 'Cantera' or 'RealList'");
+        }
+        pp.query("progressVariable.revert", m_Crevert);
+    }
+}
+
+void
 PeleLM::parseComposition(Vector<std::string> compositionIn,
                          std::string         compositionType,
                          Real               *massFrac)
@@ -1226,6 +1356,35 @@ PeleLM::parseComposition(Vector<std::string> compositionIn,
       eos.X2Y(compoIn,massFrac);
    } else {
       Abort("Unknown mixtureFraction.type ! Should be 'mass' or 'mole'");
+   }
+}
+
+void
+PeleLM::parseVars(const Vector<std::string> &a_varsNames,
+                  const Vector<std::string> &a_stringIn,
+                  Vector<Real>       &a_rVars)
+{
+   int varCountIn = a_stringIn.size();
+
+   // For each entry in the user-provided composition, parse name and value
+   std::string delimiter = ":"; 
+   for (int i = 0; i < varCountIn; i++ ) {
+      long unsigned sep = a_stringIn[i].find(delimiter);
+      if ( sep == std::string::npos ) {
+         Abort("Error parsing '"+a_stringIn[i]+"' --> unable to find delimiter :");
+      }    
+      std::string varNameIn = a_stringIn[i].substr(0, sep);
+      Real value = std::stod(a_stringIn[i].substr(sep+1,a_stringIn[i].length()));
+      int foundIt = 0; 
+      for (int k = 0; k < a_varsNames.size(); k++ ) {
+         if ( varNameIn == a_varsNames[k] ) {
+            a_rVars[k] = value;
+            foundIt = 1; 
+         }    
+      }    
+      if ( !foundIt ) {
+         Abort("Error parsing '"+a_stringIn[i]+"' --> unable to match to any provided variable name");
+      }    
    }
 }
 

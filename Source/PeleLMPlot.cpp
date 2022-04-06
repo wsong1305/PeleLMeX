@@ -148,15 +148,18 @@ void PeleLM::WritePlotFile() {
    plt_VarsName.push_back("volFrac");
 #endif
 
+   int derCount = 0;
    for (int ivar = 0; ivar < m_derivePlotVarCount; ivar++ ) {
       const PeleLMDeriveRec* rec = derive_lst.get(m_derivePlotVars[ivar]);
       for (int dvar = 0; dvar < rec->numDerive(); dvar++ ) {
          plt_VarsName.push_back(rec->variableName(dvar));
+         derCount++;
       }
    }
 
    //----------------------------------------------------------------
    // Fill the plot MultiFabs
+   int derStart = -1;
    for (int lev = 0; lev <= finest_level; ++lev) {
       int cnt = 0;
       if (m_incompressible) {
@@ -208,17 +211,22 @@ void PeleLM::WritePlotFile() {
       cnt += 1;
 #endif
 
-      for (int ivar = 0; ivar < m_derivePlotVarCount; ivar++ ) {
-         std::unique_ptr<MultiFab> mf;
-         mf = derive(m_derivePlotVars[ivar], m_cur_time, lev, 0);
-         MultiFab::Copy(mf_plt[lev], *mf, 0, cnt, mf->nComp(), 0);
-         cnt += mf->nComp();
-      }
+      if (derStart < 0) derStart = cnt;
 #ifdef AMREX_USE_EB
       EB_set_covered(mf_plt[lev],0.0);
 #endif
    }
 
+   Vector<std::unique_ptr<MultiFab> > derVec;
+   for (int lev = 0; lev <= finest_level; ++lev) {
+      derVec.push_back(std::make_unique<MultiFab> (mf_plt[lev],amrex::make_alias,derStart,derCount));
+   }
+   int dercomp = 0;
+   for (int ivar = 0; ivar < m_derivePlotVarCount; ivar++ ) {
+      const PeleLMDeriveRec* rec = derive_lst.get(m_derivePlotVars[ivar]);
+      derive(GetVecOfPtrs(derVec), dercomp, m_derivePlotVars[ivar], m_cur_time, 0);
+      dercomp += rec->numDerive();
+   }
 
    // No SubCycling, all levels the same step.
    Vector<int> istep(finest_level + 1, m_nstep);

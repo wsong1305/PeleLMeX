@@ -184,6 +184,22 @@ PeleLM::getRhoHVect(const TimeStamp &a_time) {
    return r;
 }
 
+Vector<std::unique_ptr<MultiFab> >
+PeleLM::getPressVect(const TimeStamp &a_time) {
+   Vector<std::unique_ptr<MultiFab> > r;
+   r.reserve(finest_level+1);
+   if ( a_time == AmrOldTime ) {
+      for (int lev = 0; lev <= finest_level; ++lev) {
+         r.push_back(std::make_unique<MultiFab> (m_leveldata_old[lev]->press,amrex::make_alias,0,1));
+      }
+   } else {
+      for (int lev = 0; lev <= finest_level; ++lev) {
+         r.push_back(std::make_unique<MultiFab> (m_leveldata_new[lev]->press,amrex::make_alias,0,1));
+      }
+   }
+   return r;
+}
+
 Vector<MultiFab *>
 PeleLM::getDivUVect(const TimeStamp &a_time) {
    AMREX_ASSERT(!m_incompressible);
