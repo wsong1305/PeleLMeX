@@ -60,8 +60,8 @@ void pelelm_initdata(int i, int j, int k,
               1.4 * std::sin(4 * angle  ));
     }
 
-    amrex::Real y1 = 3.6 - (radius - prob_parm.standoff - 1.42*dx[1] + pert)*100;
-    amrex::Real y2 = 3.6 - (radius - prob_parm.standoff + 1.42*dx[1] + pert)*100;
+    amrex::Real y1 = 3.6 - (radius - prob_parm.standoff - dx[1] + pert)*100;
+    amrex::Real y2 = 3.6 - (radius - prob_parm.standoff + dx[1] + pert)*100;
 
 #elif ( AMREX_SPACEDIM == 3 )
        amrex::Real pertLz = (prob_parm.pertLz > 0.0) ? prob_parm.pertLz 
@@ -76,8 +76,8 @@ void pelelm_initdata(int i, int j, int k,
               0.945 * std::sin(2 * Pi * 2 * (z - 0.0039765) / pertLz));
     }
 
-    amrex::Real y1 = 3.6 - (radius - prob_parm.standoff - 1.42*dx[1] + pert)*100;
-    amrex::Real y2 = 3.6 - (radius - prob_parm.standoff + 1.42*dx[1] + pert)*100;
+    amrex::Real y1 = 3.6 - (radius - prob_parm.standoff - dx[1] + pert)*100;
+    amrex::Real y2 = 3.6 - (radius - prob_parm.standoff + dx[1] + pert)*100;
 #endif
 
 
