@@ -45,9 +45,9 @@ void pelelm_initdata(int i, int j, int k,
     amrex::Real massfrac[NUM_SPECIES] = {0.0};
     amrex::Real pert = 0.0;
 
-    amrex::Real radius = std::sqrt(   (x-xc)*(x-xc)
-                                    + (y-yc)*(y-yc)
-                                    + (z-zc)*(z-zc));
+    amrex::Real radius = std::sqrt(AMREX_D_TERM(   (x-xc)*(x-xc),
+                                                 + (y-yc)*(y-yc),
+                                                 + (z-zc)*(z-zc)));
 
     if (prob_parm.pertmag > 0.0) 
     {
@@ -55,13 +55,14 @@ void pelelm_initdata(int i, int j, int k,
 #if ( AMREX_SPACEDIM == 2 )
        amrex::Real angle = std::atan2((y-yc),(x-xc));
        pert = prob_parm.pertmag * 
-             (0.7 * std::sin(2*angle) +
-              0.9 * std::sin(8 * angle ) +
-              1.4 * std::sin(4 * angle  ));
+             (0.7 * std::sin(4.0 * 23.0 * angle + Pi/2.0) +
+              0.9 * std::sin(4.0 * 11.0 * angle + Pi/2.0) +
+              1.4 * std::sin(4.0 * 7.0  * angle + 3.0*Pi/2.0));
     }
 
-    amrex::Real y1 = 3.6 - (radius - prob_parm.standoff - dx[1] + pert)*100;
-    amrex::Real y2 = 3.6 - (radius - prob_parm.standoff + dx[1] + pert)*100;
+    amrex::Real y1 = 5.0 - (radius - prob_parm.standoff - 0.5*dx[1] + pert)*100;
+    amrex::Real y2 = 5.0 - (radius - prob_parm.standoff + 0.5*dx[1] + pert)*100;
+    y1 = (y1+y2)/2.0;
 
 #elif ( AMREX_SPACEDIM == 3 )
        amrex::Real pertLz = (prob_parm.pertLz > 0.0) ? prob_parm.pertLz 
@@ -76,10 +77,10 @@ void pelelm_initdata(int i, int j, int k,
               0.945 * std::sin(2 * Pi * 2 * (z - 0.0039765) / pertLz));
     }
 
-    amrex::Real y1 = 3.6 - (radius - prob_parm.standoff - dx[1] + pert)*100;
-    amrex::Real y2 = 3.6 - (radius - prob_parm.standoff + dx[1] + pert)*100;
+    amrex::Real y1 = 5.0 - (radius - prob_parm.standoff - 0.5*dx[1] + pert)*100;
+    amrex::Real y2 = 5.0 - (radius - prob_parm.standoff + 0.5*dx[1] + pert)*100;
+    y1 = (y1+y2)/2.0;
 #endif
-
 
     pele::physics::PMF::pmf(pmf_data,y1, y1, pmf_vals);
 
@@ -90,11 +91,11 @@ void pelelm_initdata(int i, int j, int k,
     }
     eos.X2Y(molefrac, massfrac);
 
-    state(i,j,k,VELX) = 0.1;
+    state(i,j,k,VELX) = 0.0;
 #if ( AMREX_SPACEDIM == 2 )
-    state(i,j,k,VELY) = 0.1;
+    state(i,j,k,VELY) = 0.0;
 #elif ( AMREX_SPACEDIM == 3 )
-    state(i,j,k,VELY) = 0.1;
+    state(i,j,k,VELY) = 0.0;
     state(i,j,k,VELZ) = 0.0;
 #endif
 
