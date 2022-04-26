@@ -634,6 +634,8 @@ class PeleLM : public amrex::AmrCore {
                   const amrex::Vector<std::string> &a_stringIn,
                   amrex::Vector<amrex::Real> &a_rVars);
    void initProgressVariable();
+    
+   void checkMemory(const std::string &a_message);
    //-----------------------------------------------------------------------------
 
 #ifdef AMREX_USE_EB
@@ -678,6 +680,9 @@ class PeleLM : public amrex::AmrCore {
    EBFactory (int lev) const noexcept { 
       return static_cast<amrex::EBFArrayBoxFactory const&>(*m_factory[lev]);
    }
+
+   void correct_vel_small_cells(amrex::Vector<amrex::MultiFab*> const &a_vel,
+                                amrex::Vector<amrex::Array<amrex::MultiFab const*,AMREX_SPACEDIM> > const &a_umac);
 #endif
 
 
@@ -984,6 +989,7 @@ class PeleLM : public amrex::AmrCore {
    amrex::Real m_dt           = -1.0;
    amrex::Real m_cfl          = 0.7;
    amrex::Real m_fixed_dt     = -1.0;
+   amrex::Real m_init_dt      = -1.0;
    amrex::Real m_dtshrink     = 1.0;
    amrex::Real m_prev_dt      = -1.0;
    amrex::Real m_dtChangeMax  = 1.1;
@@ -1033,6 +1039,7 @@ class PeleLM : public amrex::AmrCore {
 
    // Misc.
    int m_floor_species = 0;
+   int m_checkMem = 0;
 
    // SDC
    int m_nSDCmax = 1;
@@ -1063,6 +1070,8 @@ class PeleLM : public amrex::AmrCore {
    int m_do_temporals = 0;
    int m_temp_int = 5;
    int m_do_massBalance = 0;
+   int m_do_energyBalance = 0;
+   int m_do_speciesBalance = 0;
    amrex::Real m_massOld;
    amrex::Real m_massNew;
    amrex::Real m_RhoHOld;

@@ -142,7 +142,6 @@ void PeleLM::readParameters() {
          lo_bc[dir] = 0;
       } else if (lo_bc_char[dir] == "Inflow") {
          lo_bc[dir] = 1;
-         isOpenDomain = 1;
       } else if (lo_bc_char[dir] == "Outflow") {
          lo_bc[dir] = 2;
          isOpenDomain = 1;
@@ -165,7 +164,6 @@ void PeleLM::readParameters() {
          hi_bc[dir] = 0;
       } else if (hi_bc_char[dir] == "Inflow") {
          hi_bc[dir] = 1;
-         isOpenDomain = 1;
       } else if (hi_bc_char[dir] == "Outflow") {
          hi_bc[dir] = 2;
          isOpenDomain = 1;
@@ -301,6 +299,7 @@ void PeleLM::readParameters() {
    // -----------------------------------------
    pp.query("sdc_iterMax",m_nSDCmax);
    pp.query("floor_species",m_floor_species);
+   pp.query("memory_checks",m_checkMem);
 
    // -----------------------------------------
    // Reaction
@@ -367,6 +366,7 @@ void PeleLM::readParameters() {
    ppa.query("stop_time", m_stop_time);
    ppa.query("message_int", m_message_int);
    ppa.query("fixed_dt", m_fixed_dt);
+   ppa.query("init_dt", m_init_dt);
    ppa.query("cfl", m_cfl);
    ppa.query("dt_shrink", m_dtshrink);
    ppa.query("dt_change_max", m_dtChangeMax);
