@@ -1,0 +1,159 @@
+#----------------------TIME STEPING CONTROL----------------------
+amr.max_step        = 500             # maximum number of time steps
+amr.stop_time       = 10.e-3            # final physical time
+amr.cfl             = 0.3             # cfl number for hyperbolic system
+amr.dt_shrink       = 0.1              # scale back initial timestep
+amr.change_max      = 1.1              # max timestep size increase
+
+#-------------
+geometry.is_periodic = 0 0 0            # Periodicity in each direction: 0 => no, 1 => yes
+geometry.coord_sys   = 0                # 0 => cart, 1 => RZ
+geometry.prob_lo     =-0.08 -0.08  0.0   # x_lo y_lo
+geometry.prob_hi     = 0.08  0.08  0.08  # x_hi y_hi
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# Interior, Inflow, Outflow, Symmetry,
+# SlipWallAdiab, NoSlipWallAdiab, SlipWallIsotherm, NoSlipWallIsotherm
+peleLM.lo_bc = NoSlipWallAdiab NoSlipWallAdiab Inflow
+peleLM.hi_bc = NoSlipWallAdiab NoSlipWallAdiab Outflow
+
+#-------------------------AMR CONTROL----------------------------
+amr.n_cell          = 128 128 64  # Level 0 number of cells in each direction
+amr.v               = 1            # amr verbosity level
+amr.max_level       = 2            # maximum level number allowed
+amr.ref_ratio       = 2 2 2 2      # refinement ratio
+amr.regrid_int      = 10           # how often to regrid
+amr.n_error_buf     = 1 1 1 2      # number of buffer cells in error est
+amr.grid_eff        = 0.7          # what constitutes an efficient grid
+amr.blocking_factor = 16           # block factor in grid generation
+amr.max_grid_size   = 32          # maximum box size
+
+#----------------------- PROBLEM PARAMETERS --------------------
+prob.standoff = -0.29
+prob.pertmag = 0.004
+prob.amplification = 10
+prov.T_in = 300.0
+prob.Do_swirler = 37.e-3
+prob.Di_swirler = 25.e-3
+prob.U_b        = 10.73 #bulk velocity swirler
+prob.U_c        = 0.0   #coflow velocity
+prob.swirl_angle= 10
+prob.U_jet      = 200.0
+prob.D_jet      = 10.e-3
+prob.jet_angle  = 30
+prob.phi_jet    = 8.0
+# pmf.datafile = "pmfdata.dat"
+
+# Properties of injected particles
+prob.part_temp = 300.
+
+# Log-normal distribution of particle diameters
+# Mean particle diameter
+prob.part_mean_dia = 6E-6
+
+# Standard deviation of the particle diameter
+prob.part_stdev_dia = 0.
+
+# Jet properties
+prob.gas_jet_dia = 0.15e-3 
+prob.jet_dia = 4e-5 #spray diameter
+prob.spray_angle_deg = 60.
+prob.jets_per_dir = 1
+prob.jet_start_time = 0.
+prob.jet_end_time = 10.E+0
+prob.jet_vel = 9.9
+prob.jet_loc = 0.0  0.0  0.0
+prob.jet_dx_mod = 42.
+prob.mass_flow_rate = 0.12e-3 #kg/s
+#prob.jet_end_time = 0.00052
+
+#--------------------SPRAY PARTICLE DATA-----------------------
+peleLM.do_spray_particles = 1
+particles.v = 0
+particles.cfl = 0.5
+particles.mom_transfer = 1
+particles.mass_transfer = 1
+particles.init_function = 1 # Sprays are initialized using SprayParticleInitInsert.cpp
+particles.write_spray_ascii_files = 0
+particles.parcel_size = 5. # Number of particles per parcel
+particles.fuel_species = NC7H16
+# Properties for liquid n-heptane
+particles.fuel_crit_temp = 540.3 # K (at Pc = 1.8170 MPa)
+particles.fuel_boil_temp = 370. # K (at atmospheric conditions)
+particles.fuel_ref_temp = 298.15
+particles.fuel_latent = 360600
+particles.fuel_cp = 2263 # Cp at 298
+particles.fuel_rho = 683.75
+particles.use_splash_model = false
+particles.NC12H26_psat = 4.10549 1625.928 -92.839 1.E5
+# particles.NC12H26_rho = 1569.56432408 -5.48793654915 0.0121644670893 -6.00307025807e-05
+
+#-------------------------IO CONTROL----------------------------
+# amr.restart             = chk00200
+amr.check_file          = chk          # root name of checkpoint file
+amr.check_int           = 100          # number of timesteps between checkpoints
+amr.plot_file           = plt          # root name of plot file
+amr.plot_int            = 30          # number of timesteps between plot files
+amr.derive_plot_vars    = mag_vort avg_pressure mass_fractions
+amr.grid_log            = grdlog       # name of grid logging file
+
+#-------------------------PeleLM CONTROL----------------------------
+peleLM.v = 1
+peleLM.incompressible = 0
+peleLM.rho = 1.17
+peleLM.mu = 0.0
+peleLM.use_wbar = 1
+peleLM.sdc_iterMax = 1
+peleLM.floor_species = 1
+
+#--------------------REFINEMENT CONTROL------------------------
+amr.refinement_indicators = lo_temp Vz_hi flame_tracer inBox #flame_tracer2 
+
+amr.inBox.max_level     = 3
+amr.inBox.in_box_lo     =   -2.0e-3      -2.0e-3      0.0e-3
+amr.inBox.in_box_hi     =    2.0e-3       2.0e-3      5.0e-3
+
+amr.lo_temp.max_level = 0
+amr.lo_temp.value_greater = 400
+amr.lo_temp.field_name = temp
+
+amr.Vz_hi.max_level = 0
+amr.Vz_hi.value_greater = 10
+amr.Vz_hi.field_name = z_velocity
+
+amr.flame_tracer.max_level = 3
+amr.flame_tracer.value_greater = 1.0e-1
+amr.flame_tracer.field_name = Y(NC7H16)
+
+# amr.HR.max_level = 3
+# amr.HR.value_greater = 1.e8
+# amr.HR.field_name = HeatRelease
+
+#amr.flame_tracer2.max_level = 3
+#amr.flame_tracer2.value_greater = 5.e-5
+#amr.flame_tracer2.field_name = Y(CH2O)
+
+# Refinement according to the vorticity, no field_name needed
+# amr.refinement_indicators = magvort
+# amr.magvort.max_level = 3
+# amr.magvort.vorticity_greater = 1000
+
+# --------------- INPUTS TO CHEMISTRY REACTOR ---------------
+peleLM.chem_integrator = "ReactorCvode"
+# peleLM.chem_integrator = "ReactorNull"
+peleLM.use_typ_vals_chem = 1          # Use species/temp typical values in CVODE
+ode.rtol = 1.0e-6                     # Relative tolerance of the chemical solve
+ode.atol = 1.0e-5                     # Absolute tolerance factor applied on typical values
+cvode.solve_type = GMRES     # CVODE Linear solve type (for Newton direction)
+cvode.max_order  = 4                  # CVODE max BDF order.
+
+#--------------------------OMP TILE INPUTS-----------------------------
+#fabarray.mfiter_tile_size = 512 512 512
+
+#--------------------------DEBUG/REGTESTS INPUTS-----------------------------
+amrex.regtest_reduction = 0
+amrex.fpe_trap_invalid  = 0
+amrex.fpe_trap_zero     = 0
+amrex.fpe_trap_overflow = 0
+
+
