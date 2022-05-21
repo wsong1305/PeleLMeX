@@ -20,7 +20,7 @@ peleLM.hi_bc = NoSlipWallAdiab NoSlipWallAdiab Outflow
 #-------------------------AMR CONTROL----------------------------
 amr.n_cell          = 128 128 64  # Level 0 number of cells in each direction
 amr.v               = 1            # amr verbosity level
-amr.max_level       = 2            # maximum level number allowed
+amr.max_level       = 4            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2      # refinement ratio
 amr.regrid_int      = 10           # how often to regrid
 amr.n_error_buf     = 1 1 1 2      # number of buffer cells in error est
@@ -70,7 +70,7 @@ prob.mass_flow_rate = 0.12e-3 #kg/s
 #--------------------SPRAY PARTICLE DATA-----------------------
 peleLM.do_spray_particles = 1
 particles.v = 0
-particles.cfl = 0.5
+particles.cfl = 0.3
 particles.mom_transfer = 1
 particles.mass_transfer = 1
 particles.init_function = 1 # Sprays are initialized using SprayParticleInitInsert.cpp
@@ -88,12 +88,25 @@ particles.use_splash_model = false
 particles.NC12H26_psat = 4.10549 1625.928 -92.839 1.E5
 # particles.NC12H26_rho = 1569.56432408 -5.48793654915 0.0121644670893 -6.00307025807e-05
 
+#-------------------------EB CONTROL----------------------------
+eb2.geom_type = UserDefined
+eb2.small_volfrac = 1.e-03
+eb2.maxiter = 500
+
+EB.out_diam         = 37.e-3
+EB.in_diam          = 19.6e-3
+EB.bluff_diam       = 25.0e-3
+EB.horizontal_plane = 0.0
+EB.bluff_height     = 3.0e-3
+EB.loc_x            = 12.5e-3
+EB.loc_y            = 0.0e-3
+
 #-------------------------IO CONTROL----------------------------
 # amr.restart             = chk00200
 amr.check_file          = chk          # root name of checkpoint file
 amr.check_int           = 100          # number of timesteps between checkpoints
 amr.plot_file           = plt          # root name of plot file
-amr.plot_int            = 30          # number of timesteps between plot files
+amr.plot_int            = 50          # number of timesteps between plot files
 amr.derive_plot_vars    = mag_vort avg_pressure mass_fractions
 amr.grid_log            = grdlog       # name of grid logging file
 
@@ -109,7 +122,7 @@ peleLM.floor_species = 1
 #--------------------REFINEMENT CONTROL------------------------
 amr.refinement_indicators = lo_temp Vz_hi flame_tracer inBox #flame_tracer2 
 
-amr.inBox.max_level     = 3
+amr.inBox.max_level     = 10
 amr.inBox.in_box_lo     =   -2.0e-3      -2.0e-3      0.0e-3
 amr.inBox.in_box_hi     =    2.0e-3       2.0e-3      5.0e-3
 
