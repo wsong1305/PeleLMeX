@@ -93,11 +93,6 @@ void PeleLM::WritePlotFile() {
       deriveEntryCount += rec->numDerive();
    }
    ncomp += deriveEntryCount;
-#ifdef PELELM_USE_SPRAY
-   if (do_spray_particles) {
-     ncomp += spray_derive_vars.size();
-   }
-#endif
 
    //----------------------------------------------------------------
    // Plot MultiFabs
@@ -177,15 +172,6 @@ void PeleLM::WritePlotFile() {
          plt_VarsName.push_back(rec->variableName(dvar));
       }
    }
-#ifdef PELELM_USE_SPRAY
-   if (spray_derive_vars.size() > 0) {
-     // We need virtual particles for the lower levels
-     setupVirtualParticles(0);
-     for (int ivar = 0; ivar < spray_derive_vars.size(); ivar++) {
-       plt_VarsName.push_back(spray_derive_vars[ivar]);
-     }
-   }
-#endif
 
    //----------------------------------------------------------------
    // Fill the plot MultiFabs
@@ -252,22 +238,6 @@ void PeleLM::WritePlotFile() {
          MultiFab::Copy(mf_plt[lev], *mf, 0, cnt, mf->nComp(), 0);
          cnt += mf->nComp();
       }
-#ifdef PELELM_USE_SPRAY
-      if (spray_derive_vars.size() > 0) {
-        int num_spray_derive = spray_derive_vars.size();
-        mf_plt[lev].setVal(0., cnt, num_spray_derive);
-        theSprayPC()->computeDerivedVars(
-          mf_plt[lev], lev, cnt, spray_derive_vars, spray_fuel_names);
-        if (lev < finest_level) {
-          MultiFab tmp_plt(grids[lev], dmap[lev], num_spray_derive, 0, MFInfo(), Factory(lev));
-          tmp_plt.setVal(0.);
-          theVirtPC()->computeDerivedVars(
-            tmp_plt, lev, 0, spray_derive_vars, spray_fuel_names);
-          MultiFab::Add(mf_plt[lev], tmp_plt, 0, cnt, num_spray_derive, 0);
-        }
-        cnt += num_spray_derive;
-      }
-#endif
 #ifdef AMREX_USE_EB
       EB_set_covered(mf_plt[lev],0.0);
 #endif
@@ -285,9 +255,7 @@ void PeleLM::WritePlotFile() {
      bool is_spraycheck = false;
      for (int lev = 0; lev <= finest_level; ++lev) {
        theSprayPC()->SprayParticleIO(
-         lev, is_spraycheck, write_spray_ascii_files, plotfilename, spray_fuel_names);
-       // Remove virtual particles that were made for derived variables
-       removeVirtualParticles(lev);
+         lev, is_spraycheck, write_spray_ascii_files, plotfilename, PeleLM::spray_fuel_names);
      }
    }
 #endif
@@ -402,8 +370,7 @@ void PeleLM::WriteCheckPointFile()
      int write_ascii = 0; // Not for checkpoints
      bool is_spraycheck = true;
      for (int lev = 0; lev <= finest_level; ++lev) {
-       theSprayPC()->SprayParticleIO(
-         lev, is_spraycheck, write_ascii, checkpointname, spray_fuel_names);
+       theSprayPC()->SprayParticleIO(lev, is_spraycheck, write_ascii, checkpointname, PeleLM::spray_fuel_names);
      }
    }
 #endif
@@ -667,20 +634,22 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
           massfrac[N2_ID] = 1.0 - sumYs; 
 
           // ---- Hack to ignite the bluff-body case
-          const amrex::Real x[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0] + (i + 0.5) * dx[0],
-                                                              prob_lo[1] + (j + 0.5) * dx[1],
-                                                              prob_lo[2] + (k + 0.5) * dx[2])};
-          
-          amrex::Real r = sqrt(pow((0.0-x[0]),2)+pow((0.0-x[1]),2));
-          
-          if(x[2] > 0.0 and x[2] < 20.0e-3 and r <= 17.5e-3){
-            temp_arr(i,j,k) = 2300.;
-            // for (int n = 0; n < NUM_SPECIES; n++){
-            //     massfrac[n] = 0.0;
-            // }
-            // massfrac[H2O_ID] = 0.12602837383747101;
-            // massfrac[CO2_ID] = 4.2060650885105133E-002;
-            // massfrac[N2_ID]  = 1.0 - massfrac[H2O_ID] - massfrac[CO2_ID];
+          if(lprobparm->ignition){
+            const amrex::Real x[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0] + (i + 0.5) * dx[0],
+                                                                prob_lo[1] + (j + 0.5) * dx[1],
+                                                                prob_lo[2] + (k + 0.5) * dx[2])};
+            
+            amrex::Real r = sqrt(pow((0.0-x[0]),2)+pow((0.0-x[1]),2));
+            
+            if(x[2] > 0.0 and x[2] < 20.0e-3 and r <= 11.5e-3){
+              temp_arr(i,j,k) = 2300.;
+              // for (int n = 0; n < NUM_SPECIES; n++){
+              //     massfrac[n] = 0.0;
+              // }
+              // massfrac[H2O_ID] = 0.12602837383747101;
+              // massfrac[CO2_ID] = 4.2060650885105133E-002;
+              // massfrac[N2_ID]  = 1.0 - massfrac[H2O_ID] - massfrac[CO2_ID];
+            }
           }
           // -------------------------
 
