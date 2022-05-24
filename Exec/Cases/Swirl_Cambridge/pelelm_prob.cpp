@@ -1,9 +1,10 @@
 #include <PeleLM.H>
-#include <pelelm_prob.H>
+#include <AMReX_ParmParse.H>
 
 void PeleLM::readProbParm()
 {
-   amrex::ParmParse pp("prob");
+  amrex::ParmParse pp("prob");
+
    pp.query("P_mean"       , PeleLM::prob_parm->P_mean);
    pp.query("Zst"          ,    PeleLM::prob_parm->Zst);
    pp.query("T_in"         ,   PeleLM::prob_parm->T_in);
@@ -19,48 +20,44 @@ void PeleLM::readProbParm()
    pp.query("phi_jet"      ,  PeleLM::prob_parm->phi_jet);
    pp.query("swirl_angle"  ,  PeleLM::prob_parm->swirl_angle);
 
-   //Spray stuff
-   pp.query("jet_dx_mod", PeleLM::prob_parm->jet_dx_mod);
-   pp.get("jet_dia", PeleLM::prob_parm->jet_dia);
-   amrex::Vector<amrex::Real> jet_loc = {{0.0, 0.0, 0.0}};
-   pp.queryarr("jet_location",jet_loc);
-   pp.get("part_mean_dia", PeleLM::prob_parm->part_mean_dia);
-   pp.query("part_stdev_dia", PeleLM::prob_parm->part_stdev_dia);
-   pp.get("part_temp", PeleLM::prob_parm->part_temp);
-   pp.query("mass_flow_rate", PeleLM::prob_parm->mass_flow_rate);
-   pp.get("spray_angle_deg", PeleLM::prob_parm->spray_angle);
-   pp.query("gas_jet_dia", PeleLM::prob_parm->gas_jet_dia);
-   pp.query("gas_jet_vel", PeleLM::prob_parm->gas_jet_vel);
-   pp.query("jet_vel", PeleLM::prob_parm->jet_vel);
-   std::vector<amrex::Real> in_Y_jet(SPRAY_FUEL_NUM, 0.);
-   in_Y_jet[0] = 1.;
-   pp.queryarr("jet_mass_fracs", in_Y_jet);
-   amrex::Real sumY = 0.;
-   for (int spf = 0; spf < SPRAY_FUEL_NUM; ++spf) {
-     PeleLM::prob_parm->Y_jet[spf] = in_Y_jet[spf];
-     sumY += in_Y_jet[spf];
-   }
-   amrex::Print() << " Spray injection at: x = " << jet_loc[0] << " y = " << jet_loc[1] << " z = " << jet_loc[2] << std::endl;
-   // Convert to radians
-   PeleLM::prob_parm->spray_angle *= M_PI / 180.;
-   amrex::Real dom_len = geom[0].ProbHi(0) - geom[0].ProbLo(0);
-   amrex::Real yloc = jet_loc[0];
-   amrex::Real xloc = jet_loc[1];
-   amrex::Real zloc = jet_loc[2];
-   AMREX_D_TERM(PeleLM::prob_parm->jet_cents[0] = xloc;,
-                PeleLM::prob_parm->jet_cents[1] = yloc;,
-                PeleLM::prob_parm->jet_cents[2] = zloc;)
 
-   // PeleLM::pmf_data.initialize();
-
-   auto problo = geom[0].ProbLo();
-   auto probhi = geom[0].ProbHi();
-
-   PeleLM::prob_parm->splitx = 0.5 * (problo[0] + probhi[0]);
-   PeleLM::prob_parm->midtanh = 0.6 * (problo[0] + probhi[0]);
-   PeleLM::prob_parm->widthtanh = 0.05 * (problo[0] + probhi[0]); 
+  pp.get("jet_vel", PeleLM::prob_parm->jet_vel);
+  std::vector<amrex::Real> jcent(AMREX_SPACEDIM);
+  pp.getarr("jet_cent", jcent);
+  for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
+    PeleLM::prob_parm->jet_cent[dir] = jcent[dir];
+  }
+  amrex::Print() << " Spray injection at: x = " << PeleLM::prob_parm->jet_cent[0] << " y = " << PeleLM::prob_parm->jet_cent[1] << " z = " << PeleLM::prob_parm->jet_cent[2] << std::endl;
+  // The cells are divided by this value when prescribing the jet inlet
+  pp.get("jet_dia", PeleLM::prob_parm->jet_dia);
+  pp.get("part_mean_dia", PeleLM::prob_parm->part_mean_dia);
+  pp.query("part_stdev_dia", PeleLM::prob_parm->part_stdev_dia);
+  pp.get("part_temp", PeleLM::prob_parm->part_temp);
+  pp.query("mass_flow_rate", PeleLM::prob_parm->mass_flow_rate);
+  // All angles must be in degrees
+  // This is the spreading angle
+  pp.get("spread_angle", PeleLM::prob_parm->spread_angle);
+  pp.query("jet_angle", PeleLM::prob_parm->jet_angle);
+  pp.query("jet_azi_lo", PeleLM::prob_parm->jet_azi_lo);
+  pp.query("jet_azi_hi", PeleLM::prob_parm->jet_azi_hi);
+  std::vector<amrex::Real> in_Y_jet(SPRAY_FUEL_NUM, 0.);
+  in_Y_jet[0] = 1.;
+  pp.queryarr("Y_jet", in_Y_jet);
+  amrex::Real sumY = 0.;
+  for (int spf = 0; spf < SPRAY_FUEL_NUM; ++spf) {
+    PeleLM::prob_parm->Y_jet[spf] = in_Y_jet[spf];
+    sumY += in_Y_jet[spf];
+  }
+  if (std::abs(sumY - 1.) > 1.E-8) {
+    amrex::Abort("'jet_mass_fracs' must sum to 1");
+  }
+  // Convert to radians
+  PeleLM::prob_parm->spread_angle *= M_PI / 180.;
+  PeleLM::prob_parm->jet_azi_lo *= M_PI / 180.;
+  PeleLM::prob_parm->jet_azi_hi *= M_PI / 180.;
+  PeleLM::prob_parm->jet_angle *= M_PI / 180.;
 
    PeleLM::prob_parm->bathID = N2_ID;  
-   PeleLM::prob_parm->fuelID = NC7H16_ID;  
+   PeleLM::prob_parm->fuelID = NXC7H16_ID;  
    PeleLM::prob_parm->oxidID = O2_ID; 
 }

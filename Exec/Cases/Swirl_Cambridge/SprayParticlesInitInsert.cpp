@@ -69,6 +69,29 @@ jetOverlapArea(
   return cur_jet_area;
 }
 
+amrex::RealVect
+jet_vel_comp(
+  amrex::Real theta_1,
+  amrex::Real phi_1,
+  amrex::Real theta_2,
+  amrex::Real phi_2)
+{
+  amrex::Real st1 = std::sin(theta_1);
+  amrex::Real ct1 = std::cos(theta_1);
+  amrex::Real st2 = std::sin(theta_2);
+  amrex::Real ct2 = std::cos(theta_2);
+  amrex::Real sp1 = std::sin(phi_1);
+  amrex::Real cp1 = std::cos(phi_1);
+  amrex::Real sp2 = std::sin(phi_2);
+  amrex::Real cp2 = std::cos(phi_2);
+  amrex::Real v1 = st1 * ct2 + st2 * cp2 * ct1;
+  amrex::RealVect vel;
+  AMREX_D_TERM(vel[0] = sp1 * v1 + sp2 * st2 * cp1;
+               , vel[1] = cp1 * v1 - sp2 * st2 * sp1;
+               , vel[2] = -st1 * st2 * cp2 + ct1 * ct2;);
+  return vel;
+}
+
 bool
 SprayParticleContainer::injectParticles(
   amrex::Real time,
@@ -79,6 +102,7 @@ SprayParticleContainer::injectParticles(
   ProbParm const& prob_parm)
 {
   amrex::ignore_unused(nstep, finest_level);
+  int lowD = AMREX_SPACEDIM - 1;
   if (lev != 0) {
     return false;
   }
@@ -107,7 +131,7 @@ SprayParticleContainer::injectParticles(
   amrex::Real jet_vel = prob_parm.jet_vel;
   amrex::Real jet_dia = prob_parm.jet_dia;
   amrex::Real newdxmod = dx[0] / jet_dia * 10.;
-  amrex::Real dx_mod = amrex::max(prob_parm.jet_dx_mod, newdxmod);
+  amrex::Real dx_mod = amrex::max(50., newdxmod);
   amrex::Real jr2 = jet_dia * jet_dia / 4.; // Jet radius squared
 #if AMREX_SPACEDIM == 3
   amrex::Real jet_area = M_PI * jr2;
@@ -137,92 +161,109 @@ SprayParticleContainer::injectParticles(
   amrex::Real log_stdev = std::sqrt(
     amrex::max(-2. * std::log(part_dia) + std::log(stdsq + meansq), 0.));
   amrex::Real Pi_six = M_PI / 6.;
-  amrex::Real spray_angle = prob_parm.spray_angle;
-  amrex::Real lo_angle = -0.5 * spray_angle;
+  amrex::Real spray_angle = prob_parm.spread_angle;
+  // We have 2 spherical coordinate systems
+  // 1: Jet spherical coordinates for the center of the jet relative to
+  // Cartesian 2: Spread spherical coordinates for spread of particle relative
+  // center of jet Within these coordinates, theta is the polar angle and phi is
+  // the azimuthal
+  amrex::Real theta_1 = prob_parm.jet_angle;
+  amrex::Real theta_2_lo = -0.5 * spray_angle;
+  // Range for the azimuthal coordinate
+  amrex::Real phi_range = prob_parm.jet_azi_hi - prob_parm.jet_azi_lo;
   for (amrex::MFIter mfi = MakeMFIter(lev); mfi.isValid(); ++mfi) {
     const amrex::Box& bx = mfi.tilebox();
     const amrex::RealBox& temp =
       amrex::RealBox(bx, geom.CellSize(), geom.ProbLo());
     const amrex::Real* xloB = temp.lo();
     const amrex::Real* xhiB = temp.hi();
-    if (xloB[2] == plo[2]) {
+    amrex::RealVect cur_jet_cent;
+    for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
+      cur_jet_cent[dir] = prob_parm.jet_cent[dir];
+    }
+    const amrex::Real jet_norm = cur_jet_cent[lowD];
+    if (xloB[lowD] <= jet_norm && xhiB[lowD] > jet_norm) {
       amrex::Gpu::HostVector<ParticleType> host_particles;
-      {
-        amrex::RealVect cur_jet_cent;
-        for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
-          cur_jet_cent[dir] = prob_parm.jet_cents[dir];
-        }
-        amrex::RealVect xlo;
-        amrex::RealVect xhi;
-        for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
-          xlo[dir] = amrex::max(xloB[dir], cur_jet_cent[dir] - 3. * jet_dia);
-          xhi[dir] = amrex::min(xhiB[dir], cur_jet_cent[dir] + 3. * jet_dia);
-        }
-        // Box locations relative to jet center
-        const amrex::RealVect xloJ(AMREX_D_DECL(
-          xlo[0] - cur_jet_cent[0], xlo[1] - cur_jet_cent[1], plo[2]));
-        const amrex::RealVect xhiJ(AMREX_D_DECL(
-          xhi[0] - cur_jet_cent[0], xhi[1] - cur_jet_cent[1], plo[2]));
-        amrex::Real lox, hix;
+      amrex::RealVect xlo;
+      amrex::RealVect xhi;
+      for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
+        xlo[dir] = amrex::max(xloB[dir], cur_jet_cent[dir] - 3. * jet_dia);
+        xhi[dir] = amrex::min(xhiB[dir], cur_jet_cent[dir] + 3. * jet_dia);
+      }
+      amrex::RealVect xloJ;
+      amrex::RealVect xhiJ;
+      for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
+        xloJ[dir] = xlo[dir] - cur_jet_cent[dir];
+        xhiJ[dir] = xhi[dir] - cur_jet_cent[dir];
+      }
+      // Set jet to lower Y domain for 2D and lower Z domain for 3D
+      xloJ[lowD] = cur_jet_cent[lowD];
+      xhiJ[lowD] = cur_jet_cent[lowD];
+      amrex::Real lox, hix;
 #if AMREX_SPACEDIM == 3
-        amrex::Real loy, hiy;
-        amrex::Real cur_jet_area = jetOverlapArea(
-          dx[0] / dx_mod, xloJ, xhiJ, cur_jet_cent, jr2, loy, hiy, lox, hix);
-        amrex::Real ylen = hiy - loy;
-        loy += cur_jet_cent[1];
+      amrex::Real loy, hiy;
+      amrex::Real cur_jet_area = jetOverlapArea(
+        dx[0] / dx_mod, xloJ, xhiJ, cur_jet_cent, jr2, loy, hiy, lox, hix);
+      amrex::Real ylen = hiy - loy;
+      loy += cur_jet_cent[1];
 #else
-        amrex::Real cur_jet_area = jetOverlapArea(
-          dx[0] / dx_mod, xloJ, xhiJ, cur_jet_cent, jr2, lox, hix);
+      amrex::Real cur_jet_area =
+        jetOverlapArea(dx[0] / dx_mod, xloJ, xhiJ, cur_jet_cent, jr2, lox, hix);
 #endif
-        amrex::Real xlen = hix - lox;
-        lox += cur_jet_cent[0];
-
-        if (cur_jet_area > 0.) {
-          amrex::Real jet_perc = cur_jet_area / jet_area;
-          amrex::Real perc_mass = jet_perc * mass_flow_rate * dt;
-          amrex::Real total_mass = 0.;
-          while (total_mass < perc_mass) {
-            amrex::RealVect part_loc(AMREX_D_DECL(
-              lox + amrex::Random() * xlen, loy + amrex::Random() * ylen,
-              plo[2]));
-            amrex::Real r2 = AMREX_D_TERM(
-              std::pow(part_loc[0] - cur_jet_cent[0], 2), ,
-              +std::pow(part_loc[1] - cur_jet_cent[1], 2));
-            if (r2 <= jr2) {
-              ParticleType p;
-              p.id() = ParticleType::NextID();
-              p.cpu() = amrex::ParallelDescriptor::MyProc();
-              amrex::Real theta = lo_angle + spray_angle * amrex::Random();
+      amrex::Real xlen = hix - lox;
+      lox += cur_jet_cent[0];
+      if (cur_jet_area > 0.) {
+        amrex::Real jet_perc = cur_jet_area / jet_area;
+        amrex::Real perc_mass = jet_perc * mass_flow_rate * dt;
+        amrex::Real total_mass = 0.;
+        while (total_mass < perc_mass) {
+          amrex::RealVect part_loc;
+          part_loc[0] = lox + amrex::Random() * xlen;
+          AMREX_D_PICK(, part_loc[1] = jet_norm;
+                       , part_loc[1] = loy + amrex::Random() * ylen;
+                       part_loc[2] = jet_norm;)
+          amrex::Real r2 = AMREX_D_TERM(
+            std::pow(part_loc[0] - cur_jet_cent[0], 2), ,
+            +std::pow(part_loc[1] - cur_jet_cent[1], 2));
+          if (r2 <= jr2) {
+            ParticleType p;
+            p.id() = ParticleType::NextID();
+            p.cpu() = amrex::ParallelDescriptor::MyProc();
+            // Determine the polar angle for the spread where 0 is perpendicular
+            // to the theta_2 axis
+            amrex::Real theta_2 = theta_2_lo + amrex::Random() * spray_angle;
 #if AMREX_SPACEDIM == 3
-              amrex::Real theta2 = 2. * M_PI * amrex::Random();
+            // Determine the azimuthal angle for the jet center
+            amrex::Real phi_1 =
+              prob_parm.jet_azi_lo + amrex::Random() * phi_range;
+            // Determine the azimuthal angle for the spread
+            amrex::Real phi_2 = 2. * M_PI * amrex::Random();
 #else
-              amrex::Real theta2 = 0.;
+            amrex::Real phi_1 = 0.;
+            amrex::Real phi_2 = 0.;
 #endif
-              amrex::Real x_vel = jet_vel * std::sin(theta) * std::cos(theta2);
-              amrex::Real y_vel = jet_vel * std::sin(theta) * std::sin(theta2);
-              amrex::Real z_vel = jet_vel * std::cos(theta);
-              amrex::RealVect part_vel(AMREX_D_DECL(x_vel, y_vel, z_vel));
-              AMREX_D_TERM(p.rdata(pstateVel) = x_vel;
-                           , p.rdata(pstateVel + 1) = y_vel;
-                           , p.rdata(pstateVel + 2) = z_vel;);
-              amrex::Real cur_dia = amrex::RandomNormal(log_mean, log_stdev);
-              // Use a log normal distribution
-              cur_dia = std::exp(cur_dia);
-              // Add particles as if they have advanced some random portion of
-              // dt
-              amrex::Real pmov = amrex::Random();
-              for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
-                p.pos(dir) = part_loc[dir] + pmov * dt * part_vel[dir];
-              }
-              p.rdata(pstateT) = part_temp;
-              p.rdata(pstateDia) = cur_dia;
-              for (int sp = 0; sp < SPRAY_FUEL_NUM; ++sp) {
-                p.rdata(pstateY + sp) = prob_parm.Y_jet[sp];
-              }
-              host_particles.push_back(p);
-              amrex::Real pmass = Pi_six * rho_part * std::pow(cur_dia, 3);
-              total_mass += num_ppp * pmass;
+            amrex::RealVect part_vel =
+              jet_vel_comp(theta_1, phi_1, theta_2, phi_2);
+            AMREX_D_TERM(p.rdata(pstateVel) = jet_vel * part_vel[0];
+                         , p.rdata(pstateVel + 1) = jet_vel * part_vel[1];
+                         , p.rdata(pstateVel + 2) = jet_vel * part_vel[2];);
+            amrex::Real cur_dia = amrex::RandomNormal(log_mean, log_stdev);
+            // Use a log normal distribution
+            cur_dia = std::exp(cur_dia);
+            // Add particles as if they have advanced some random portion of
+            // dt
+            amrex::Real pmov = amrex::Random();
+            for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
+              p.pos(dir) = part_loc[dir] + pmov * dt * part_vel[dir];
             }
+            p.rdata(pstateT) = part_temp;
+            p.rdata(pstateDia) = cur_dia;
+            for (int sp = 0; sp < SPRAY_FUEL_NUM; ++sp) {
+              p.rdata(pstateY + sp) = prob_parm.Y_jet[sp];
+            }
+            host_particles.push_back(p);
+            amrex::Real pmass = Pi_six * rho_part * std::pow(cur_dia, 3);
+            total_mass += num_ppp * pmass;
           }
         }
       }
@@ -232,7 +273,6 @@ SprayParticleContainer::injectParticles(
         auto old_size = particle_tile.GetArrayOfStructs().size();
         auto new_size = old_size + host_particles.size();
         particle_tile.resize(new_size);
-
         amrex::Gpu::copy(
           amrex::Gpu::hostToDevice, host_particles.begin(),
           host_particles.end(),

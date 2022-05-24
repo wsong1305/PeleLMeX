@@ -1,17 +1,16 @@
-TOP = ../../../../PeleLMeX
-AMREX_HOME         ?= ${TOP}/Submodules/amrex
-PELELMEX_HOME      ?= ${TOP}
-PELE_PHYSICS_HOME  ?= ${TOP}/Submodules/PelePhysics
-AMREX_HYDRO_HOME   ?= ${TOP}/Submodules/AMReX-Hydro
-PELEMP_HOME=/lustre/scratch/bsouzas/PeleMP
+PELEMP_HOME=/lustre/scratch/bsouzas/PeleMP/
+PELELMEX_HOME=/lustre/scratch/bsouzas/PeleLMeX/
+AMREX_HOME         ?= ${PELELMEX_HOME}/Submodules/amrex
+PELE_PHYSICS_HOME  ?= ${PELELMEX_HOME}/Submodules/PelePhysics
+AMREX_HYDRO_HOME   ?= ${PELELMEX_HOME}/Submodules/AMReX-Hydro
 
 # AMReX
 DIM             = 3
 DEBUG           = FALSE
 PRECISION       = DOUBLE
-VERBOSE         = FALSE
+VERBOSE         = TRUE
 TINY_PROFILE    = TRUE
-USE_EB	        = FALSE
+USE_EB          = TRUE
 
 # Compilation
 COMP            = gnu
@@ -22,11 +21,10 @@ USE_HIP         = FALSE
 
 # PeleLMeX
 USE_EFIELD      = FALSE
-USE_TURBINFLOW  = TRUE
 
 # PelePhysics
-Chemistry_Model = heptane_3sp
-Eos_Model		= Fuego
+Chemistry_Model = heptane_fc
+Eos_Model       = Fuego
 Transport_Model = Simple
 
 USE_PARTICLES = TRUE

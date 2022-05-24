@@ -22,8 +22,8 @@ set_Y_from_Phi(ProbParm const& prob_parm,
    auto eos = pele::physics::PhysicsType::eos();
    amrex::Real Xt[NUM_SPECIES] = {0.0};
    amrex::Real a = 0.0;
-   if ( prob_parm.fuelID == NC7H16_ID ) {
-      a = 11.0;
+   if ( prob_parm.fuelID == NXC7H16_ID ) {
+     a = 11.0;
    }
    Xt[prob_parm.oxidID] = 1.0 / ( 1.0 + phi_in / a + 0.79 / 0.21 );
    Xt[prob_parm.fuelID] = phi_in * Xt[prob_parm.oxidID] / a;
@@ -131,7 +131,7 @@ pelelm_initdata (int i, int j, int k,
 
     // pele::physics::PMF::pmf(pmf_data, z1, z2, pmf_vals);
       
-    state(i,j,k,TEMP) = (2300.*jet_total) + ((1-jet_total)*(310));
+    state(i,j,k,TEMP) = (prob_parm.T0*jet_total) + ((1-jet_total)*(prob_parm.T_in));
 
     for (int n = 0; n < NUM_SPECIES; ++n) {
         // molefrac[n] = (pmf_vals[3 + n]*jet_total)+((1-jet_total)*(molefrac_air[n]));
@@ -142,7 +142,7 @@ pelelm_initdata (int i, int j, int k,
 
     state(i,j,k,VELX) = 0;
     state(i,j,k,VELY) = 0;
-    state(i,j,k,VELZ) = 1.;
+    state(i,j,k,VELZ) = prob_parm.U_b;
 
     amrex::Real rho_cgs, P_cgs;
     P_cgs = prob_parm.P_mean * 10.0;
@@ -306,7 +306,7 @@ bcnormal(
   amrex::Real alpha = atan(x[0]/x[1]);
 
   // ------ Swirl region ---------
-  if(r > prob_parm.Di_swirler and r < prob_parm.Do_swirler){
+  // if(r > prob_parm.Di_swirler and r < prob_parm.Do_swirler){
     amrex::Real swirl_angle_radians = prob_parm.swirl_angle*3.1415/180.;
     vel_swirler_x = sin(swirl_angle_radians)*prob_parm.U_b;
     vel_swirler_y = sin(swirl_angle_radians)*prob_parm.U_b;
@@ -325,7 +325,7 @@ bcnormal(
     else{
       vel_swirler_y = -vel_swirler_y*cos(alpha);
     }
-  }
+  // }
 
 
   s_ext[VELX] = vel_swirler_x;// + vel_jet_x; //+ vel_jet_x + vel_fluctuation_swirler_x;
