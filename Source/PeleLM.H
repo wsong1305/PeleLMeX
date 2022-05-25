@@ -13,6 +13,7 @@
 #include "PelePhysics.H"
 #include "PMFData.H"
 #include "turbinflow.H"
+#include "ProblemHelper.H"
 #include "ReactorBase.H"
 #include <PeleLM_Index.H>
 #include <PeleLMDerive.H>
@@ -1051,6 +1052,9 @@ class PeleLM : public amrex::AmrCore {
 
    // Turbulence injection
    pele::physics::turbinflow::TurbInflow turb_inflow;
+
+   // Problem helper
+   std::unique_ptr<pele::physics::ProblemHelper> pbHelper;
 
    // Diagnostics
    amrex::Vector<std::unique_ptr<DiagBase>> m_diagnostics; 
