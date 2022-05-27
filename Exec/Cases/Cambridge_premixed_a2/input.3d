@@ -1,0 +1,150 @@
+#----------------------TIME STEPING CONTROL----------------------
+amr.max_step        = 100000             # maximum number of time steps
+amr.stop_time       = 4.e-3            # final physical time
+amr.cfl             = 0.3              # cfl number for hyperbolic system
+amr.dt_shrink       = 0.1              # scale back initial timestep
+amr.change_max      = 1.1              # max timestep size increase
+
+#-------------
+geometry.is_periodic = 0 0 0            # Periodicity in each direction: 0 => no, 1 => yes
+geometry.coord_sys   = 0                # 0 => cart, 1 => RZ
+geometry.prob_lo     =-0.04 -0.04 -0.02   # x_lo y_lo
+geometry.prob_hi     = 0.04  0.04  0.06  # x_hi y_hi
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# Interior, Inflow, Outflow, Symmetry,
+# SlipWallAdiab, NoSlipWallAdiab, SlipWallIsotherm, NoSlipWallIsotherm
+peleLM.lo_bc = Outflow Outflow Inflow
+peleLM.hi_bc = Outflow Outflow Outflow
+
+#-------------------------AMR CONTROL----------------------------
+amr.n_cell          = 32 32 32  # Level 0 number of cells in each direction
+peleLM.v            = 4            # amr verbosity level
+amr.max_level       = 3            # maximum level number allowed
+amr.ref_ratio       = 2 2 2 2      # refinement ratio
+amr.regrid_int      = 10           # how often to regrid
+amr.n_error_buf     = 1 1 1 2      # number of buffer cells in error est
+amr.grid_eff        = 0.7          # what constitutes an efficient grid
+amr.blocking_factor = 16           # block factor in grid generation
+amr.max_grid_size   = 16           # maximum box size
+
+#----------------------- PROBLEM PARAMETERS --------------------
+prob.standoff = -0.29
+prob.pertmag = 0.004
+prob.T_in = 300.0
+prob.Tb_init = 300.0
+
+
+prob.Do_swirler = 37.e-3
+prob.Di_swirler = 25.e-3
+prob.U_b        = 23.8  #bulk velocity swirler
+prob.vel_fluct = 0.0
+# prob.phi_in    = 0.615
+
+prob.phi_in        = 0.8
+prob.phi_target    = 0.0
+prob.t_start       = 0.01020
+prob.dt_phi_change = 1e-3
+
+#-------------------------EB CONTROL----------------------------
+eb2.geom_type = UserDefined
+eb2.small_volfrac = 1.e-03
+eb2.maxiter = 500
+
+EB.out_diam         = 35.e-3
+EB.in_diam          = 6.5e-3
+EB.bluff_diam       = 23.0e-3
+EB.horizontal_plane = 0.0
+EB.bluff_height     = 8.0e-3
+EB.loc_x            = 11.5e-3
+EB.loc_y            = 0.0e-3
+
+
+#-------------------------IO CONTROL----------------------------
+amr.restart             = chk00376
+# amr.initDataPlt = non_reactive/plt00850
+prob.ignition = false   # initialize high-T region when true and initDataPlt
+amr.check_file          = chk          # root name of checkpoint file
+amr.check_int           = 50           # number of timesteps between checkpoints
+amr.plot_file           = plt          # root name of plot file
+# amr.plot_int            = 1          # number of timesteps between plot files
+amr.plot_per            = 5.e-4
+amr.derive_plot_vars    = mag_vort avg_pressure mass_fractions
+amr.grid_log            = grdlog       # name of grid logging file
+
+#-------------------------PeleLM CONTROL----------------------------
+peleLM.v = 1
+peleLM.incompressible = 0
+peleLM.rho = 1.17
+peleLM.mu = 0.0
+peleLM.use_wbar = 1
+peleLM.sdc_iterMax = 1
+peleLM.floor_species = 1
+peleLM.deltaT_verbose = 0
+
+#--------------------REFINEMENT CONTROL------------------------
+amr.refinement_indicators = flame_tracer fuel #inBox # lo_temp flame_tracer2 
+
+
+amr.flame_tracer.max_level = 4
+amr.flame_tracer.value_greater = 1.0e-4
+amr.flame_tracer.field_name = Y(CH2O)
+
+amr.fuel.max_level = 1
+amr.fuel.value_greater = 1.0e-3
+amr.fuel.field_name = Y(POSF10325)
+
+# amr.HR.max_level = 3
+# amr.HR.value_greater = 1.e8
+# amr.HR.field_name = HeatRelease
+
+# amr.lo_temp.max_level = 0
+# amr.lo_temp.value_greater = 400
+# amr.lo_temp.field_name = temp
+
+# amr.inBox.max_level     = 0
+# amr.inBox.in_box_lo     =   -2.0e-3      -2.0e-3      0.0e-3
+# amr.inBox.in_box_hi     =    2.0e-3       2.0e-3      5.0e-3
+
+
+#amr.flame_tracer2.max_level = 3
+#amr.flame_tracer2.value_greater = 5.e-5
+#amr.flame_tracer2.field_name = Y(CH2O)
+
+# Refinement according to the vorticity, no field_name needed
+# amr.refinement_indicators = magvort
+# amr.magvort.max_level = 3
+# amr.magvort.vorticity_greater = 1000
+
+# --------------- INPUTS TO CHEMISTRY REACTOR ---------------
+# peleLM.chem_integrator = "ReactorCvode"
+peleLM.chem_integrator = "ReactorNull"
+peleLM.use_typ_vals_chem = 1          # Use species/temp typical values in CVODE
+ode.rtol = 1.0e-6                     # Relative tolerance of the chemical solve
+ode.atol = 1.0e-5                     # Absolute tolerance factor applied on typical values
+# cvode.solve_type = GMRES     # CVODE Linear solve type (for Newton direction)
+cvode.solve_type = dense_direct     # CVODE Linear solve type (for Newton direction)
+cvode.max_order  = 4                  # CVODE max BDF order.
+
+#--------------------------OMP TILE INPUTS-----------------------------
+#fabarray.mfiter_tile_size = 512 512 512
+
+#--------------------------DEBUG/REGTESTS INPUTS-----------------------------
+amrex.regtest_reduction = 0
+amrex.fpe_trap_invalid  = 0
+amrex.fpe_trap_zero     = 0
+amrex.fpe_trap_overflow = 0
+amrex.abort_on_out_of_gpu_memory=1
+
+
+
+#--------------------- LINEAR SOLVER --------------------------
+nodal_proj.verbose = 1
+# nodal_proj.mg_max_coarsening_level = 0
+# nodal_proj.atol = 1.0e-03
+# nodal_proj.rtol = 1.0e-03
+
+# mac_proj.atol = 1.0e-03
+# mac_proj.rtol = 1.0e-03
+mac_proj.verbose = 1
+
