@@ -63,13 +63,26 @@ void PeleLM::calcDiffusivity(const TimeStamp &a_time) {
          auto const& lambda = ldata_p->diff_cc.array(mfi,NUM_SPECIES);
          auto const& mu     = ldata_p->diff_cc.array(mfi,NUM_SPECIES+1);
 
-         // TODO: unity Lewis
+         if (m_Lewis_model == Unity) {
+            amrex::ParallelFor(gbx, [rhoY, T, rhoD, lambda, mu, ltransparm]
+            AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+               getTransportCoeffUnityLewis( i, j, k, rhoY, T, rhoD, lambda, mu, ltransparm);
+            });
+         } else if (m_Lewis_model == Constant) {
+            amrex::ParallelFor(gbx, [rhoY, T, rhoD, lambda, mu, ltransparm, specLe = m_species_Lewis]
+            AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+               getTransportCoeffConstantLewis( i, j, k, rhoY, T, rhoD, lambda, mu, specLe, ltransparm);
+            });
+         } else if (m_Lewis_model == MixAveraged) {
+            amrex::ParallelFor(gbx, [rhoY, T, rhoD, lambda, mu, ltransparm]
+            AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+               getTransportCoeff( i, j, k, rhoY, T, rhoD, lambda, mu, ltransparm);
+            });
+         }
 
-         amrex::ParallelFor(gbx, [rhoY, T, rhoD, lambda, mu, ltransparm]
-         AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-         {
-            getTransportCoeff( i, j, k, rhoY, T, rhoD, lambda, mu, ltransparm);
-         });
 #ifdef PELE_USE_EFIELD
          auto const& Ks   = ldata_p->mob_cc.array(mfi,0);
          auto eos = pele::physics::PhysicsType::eos();

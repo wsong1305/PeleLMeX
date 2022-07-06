@@ -1052,6 +1052,11 @@ class PeleLM : public amrex::AmrCore {
    static pele::physics::transport::TransportParams<
              pele::physics::PhysicsType::transport_type> trans_parms;
 
+   enum LewisModel { MixAveraged, Constant, Unity };
+   LewisModel m_Lewis_model;
+   amrex::GpuArray<amrex::Real,NUM_SPECIES> m_species_Lewis;
+   
+
    // Reactor pointer
    std::string m_chem_integrator;
    std::unique_ptr<pele::physics::reactions::ReactorBase> m_reactor;

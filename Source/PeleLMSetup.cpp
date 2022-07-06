@@ -312,7 +312,27 @@ void PeleLM::readParameters() {
    pp.query("deltaT_iterMax",m_deltaTIterMax);
    pp.query("deltaT_tol",m_deltaT_norm_max);
    pp.query("deltaT_crashIfFailing",m_crashOnDeltaTFail);
-
+   // Species transport simplifications
+   std::string lewis_model = "MixAveraged";
+   pp.query("LewisModel",lewis_model);
+   if ( lewis_model == "Unity" ) {
+       m_Lewis_model = Unity;
+       Print() << " Warning: a unity Lewis number approximation is used ! \n";
+   } else if ( lewis_model == "Constant" ) {
+       m_Lewis_model = Constant;
+       int nLewis = pp.countval("constant_Lewis");
+       AMREX_ALWAYS_ASSERT(nLewis == NUM_SPECIES);
+       Vector<Real> specLe(NUM_SPECIES,0);
+       pp.queryarr("constant_Lewis",specLe,0,NUM_SPECIES);
+       for (int n = 0; n < NUM_SPECIES; ++n) {
+           m_species_Lewis[n] = specLe[n];
+       }
+       Print() << " Warning: user-provided constant Lewis number approximation is used ! \n";
+   } else if ( lewis_model == "MixAveraged" ) {
+       m_Lewis_model = MixAveraged;
+   } else {
+       Abort(" Unknown LewisModel ! Must be one of: MixAveraged, Constant, Unity");
+   }
 
    // -----------------------------------------
    // initialization

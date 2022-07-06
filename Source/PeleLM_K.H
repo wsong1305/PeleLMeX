@@ -62,6 +62,125 @@ getTransportCoeff(int i, int j, int k,
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
+getTransportCoeffConstantLewis(int i, int j, int k,
+                               amrex::Array4<const amrex::Real> const& rhoY,
+                               amrex::Array4<const amrex::Real> const& T,
+                               amrex::Array4<      amrex::Real> const& rhoDi,
+                               amrex::Array4<      amrex::Real> const& lambda,
+                               amrex::Array4<      amrex::Real> const& mu,
+                               amrex::GpuArray<amrex::Real,NUM_SPECIES> const speciesLe,
+                               pele::physics::transport::TransParm<pele::physics::PhysicsType::eos_type,
+                                                      pele::physics::PhysicsType::transport_type> const* trans_parm) noexcept
+{
+   using namespace amrex::literals;
+
+   auto eos = pele::physics::PhysicsType::eos();
+   amrex::Real mwtinv[NUM_SPECIES] = {0.0};
+   eos.inv_molecular_weight(mwtinv);
+
+   // Get rho & Y from rhoY
+   amrex::Real rho = 0.0_rt;
+   for (int n = 0; n < NUM_SPECIES; n++) {
+      rho += rhoY(i,j,k,n);
+   }
+   amrex::Real rhoinv = 1.0_rt / rho;
+   amrex::Real y[NUM_SPECIES] = {0.0};
+   for (int n = 0; n < NUM_SPECIES; n++) {
+      y[n] = rhoY(i,j,k,n) * rhoinv;
+   }
+
+   amrex::Real Wbar = 0.0_rt;
+   eos.Y2WBAR(y, Wbar);
+
+   amrex::Real rho_cgs = rho * 1.0e-3_rt;                          // MKS -> CGS conversion
+   amrex::Real rhoDi_cgs[NUM_SPECIES] = {0.0};
+   amrex::Real lambda_cgs = 0.0_rt;
+   amrex::Real mu_cgs = 0.0_rt;
+   amrex::Real dummy_xi = 0.0_rt;
+   amrex::Real Tloc = T(i,j,k);
+
+   bool get_xi = false;
+   bool get_mu = true;
+   bool get_lam = true;
+   bool get_Ddiag = false;
+   auto trans = pele::physics::PhysicsType::transport();
+   trans.transport(get_xi, get_mu, get_lam, get_Ddiag, Tloc,
+                   rho_cgs, y, rhoDi_cgs, mu_cgs, dummy_xi, lambda_cgs, trans_parm);
+
+   // Do CGS -> MKS conversions
+   lambda(i,j,k) = lambda_cgs * 1.0e-5_rt;
+   mu(i,j,k) = mu_cgs * 1.0e-1_rt;
+   
+   amrex::Real cpmix = 0.0_rt;
+   eos.TY2Cp(T(i,j,k), y, cpmix);
+   cpmix *= 1.0e-4_rt;
+   for (int n = 0; n < NUM_SPECIES; n++) {
+      rhoDi(i,j,k,n) = lambda(i,j,k) / ( speciesLe[n] * rho * cpmix);
+   }
+}
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void
+getTransportCoeffUnityLewis(int i, int j, int k,
+                            amrex::Array4<const amrex::Real> const& rhoY,
+                            amrex::Array4<const amrex::Real> const& T,
+                            amrex::Array4<      amrex::Real> const& rhoDi,
+                            amrex::Array4<      amrex::Real> const& lambda,
+                            amrex::Array4<      amrex::Real> const& mu,
+                            pele::physics::transport::TransParm<pele::physics::PhysicsType::eos_type,
+                                                      pele::physics::PhysicsType::transport_type> const* trans_parm) noexcept
+{
+   using namespace amrex::literals;
+
+   auto eos = pele::physics::PhysicsType::eos();
+   amrex::Real mwtinv[NUM_SPECIES] = {0.0};
+   eos.inv_molecular_weight(mwtinv);
+
+   // Get rho & Y from rhoY
+   amrex::Real rho = 0.0_rt;
+   for (int n = 0; n < NUM_SPECIES; n++) {
+      rho += rhoY(i,j,k,n);
+   }
+   amrex::Real rhoinv = 1.0_rt / rho;
+   amrex::Real y[NUM_SPECIES] = {0.0};
+   for (int n = 0; n < NUM_SPECIES; n++) {
+      y[n] = rhoY(i,j,k,n) * rhoinv;
+   }
+
+   amrex::Real Wbar = 0.0_rt;
+   eos.Y2WBAR(y, Wbar);
+
+   amrex::Real rho_cgs = rho * 1.0e-3_rt;                          // MKS -> CGS conversion
+   amrex::Real rhoDi_cgs[NUM_SPECIES] = {0.0};
+   amrex::Real lambda_cgs = 0.0_rt;
+   amrex::Real mu_cgs = 0.0_rt;
+   amrex::Real dummy_xi = 0.0_rt;
+   amrex::Real Tloc = T(i,j,k);
+
+   bool get_xi = false;
+   bool get_mu = true;
+   bool get_lam = true;
+   bool get_Ddiag = false;
+   auto trans = pele::physics::PhysicsType::transport();
+   trans.transport(get_xi, get_mu, get_lam, get_Ddiag, Tloc,
+                   rho_cgs, y, rhoDi_cgs, mu_cgs, dummy_xi, lambda_cgs, trans_parm);
+
+   // Do CGS -> MKS conversions
+   lambda(i,j,k) = lambda_cgs * 1.0e-5_rt;
+   mu(i,j,k) = mu_cgs * 1.0e-1_rt;
+   
+   amrex::Real cpmix = 0.0_rt;
+   eos.TY2Cp(T(i,j,k), y, cpmix);
+   cpmix *= 1.0e-4_rt;
+   for (int n = 0; n < NUM_SPECIES; n++) {
+      rhoDi(i,j,k,n) = lambda(i,j,k) / ( 1.0_rt * rho * cpmix);
+   }
+}
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void
 getVelViscosity(int i, int j, int k,
                 amrex::Array4<const amrex::Real> const& rhoY,
                 amrex::Array4<const amrex::Real> const& T,

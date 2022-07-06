@@ -430,11 +430,25 @@ void pelelm_derdiffc (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int dc
     auto     lambda  = dummies.array(0);
     auto         mu  = dummies.array(1);
     auto const* ltransparm = a_pelelm->trans_parms.device_trans_parm();
-    amrex::ParallelFor(bx,
-    [rhoY,T,rhoD,lambda,mu,ltransparm] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    {
-        getTransportCoeff(i, j, k, rhoY, T, rhoD, lambda, mu, ltransparm);
-    });
+    if (a_pelelm->m_Lewis_model == a_pelelm->Unity) {
+        amrex::ParallelFor(bx,
+        [rhoY,T,rhoD,lambda,mu,ltransparm] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            getTransportCoeffUnityLewis(i, j, k, rhoY, T, rhoD, lambda, mu, ltransparm);
+        });
+    } else if (a_pelelm->m_Lewis_model == a_pelelm->Constant) {
+        amrex::ParallelFor(bx,
+        [rhoY,T,rhoD,lambda,mu,ltransparm,specLe=a_pelelm->m_species_Lewis] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            getTransportCoeffConstantLewis(i, j, k, rhoY, T, rhoD, lambda, mu, specLe, ltransparm);
+        });
+    } else if (a_pelelm->m_Lewis_model == a_pelelm->MixAveraged) {
+        amrex::ParallelFor(bx,
+        [rhoY,T,rhoD,lambda,mu,ltransparm] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            getTransportCoeff(i, j, k, rhoY, T, rhoD, lambda, mu, ltransparm);
+        });
+    }
 }
 
 //
