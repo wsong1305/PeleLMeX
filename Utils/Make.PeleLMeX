@@ -80,7 +80,7 @@ ifeq ($(PELE_USE_KLU), TRUE)
   DEFINES += -DPELE_USE_KLU
 endif
 
-ChemDir  = Support/Mechanism/Models/$(Chemistry_Model)
+ChemDir  = Support/Fuego/Mechanism/Models/$(Chemistry_Model)
 
 PPdirs  := Utility/PMF Utility/TurbInflow Utility/PltFileManager Source $(ChemDir) Reactions Eos Transport
 
