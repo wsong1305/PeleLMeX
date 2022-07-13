@@ -244,13 +244,18 @@ class PeleLM : public amrex::AmrCore {
                            amrex::Real time,
                            bool initial);
 
+   // checkRunParams
+   void checkRunParams();
+
    //-----------------------------------------------------------------------------
 
    //-----------------------------------------------------------------------------
    // PROJECTION
 
-   // Initial projection
+   // Initial projections
    void initialProjection();
+
+   void initialPressProjection();
 
    // Velocity projection at Time
    void velocityProjection(int is_init,
@@ -264,6 +269,12 @@ class PeleLM : public amrex::AmrCore {
                        const amrex::Vector<const amrex::MultiFab*> &rhs_nd,
                        int increment_gp,
                        amrex::Real scaling_factor);
+
+   // Scaling functions for 2D-RZ calculations
+   void scaleProj_RZ(int a_lev,
+                     amrex::MultiFab &a_rhs);
+   void unscaleProj_RZ(int a_lev,
+                       amrex::MultiFab &a_rhs);
    //-----------------------------------------------------------------------------
 
    //-----------------------------------------------------------------------------
@@ -445,12 +456,8 @@ class PeleLM : public amrex::AmrCore {
    void sprayMKDLevel(const int level,
                       const amrex::Real time,
                       const amrex::Real dt);
-   void sprayMK(const amrex::Real time,
-                const amrex::Real dt);
-   void sprayMKLevel(const int level,
-                     const amrex::Real time,
-                     const amrex::Real dt);
-   void sprayInjectRedist(bool regridded, int lbase = 0);
+   void sprayInjectRedist();
+   void sprayPostRegrid();
    void setSprayState(const amrex::Real& a_flow_dt);
    void addSpraySource(const int level);
    static int write_spray_ascii_files;
@@ -1076,11 +1083,13 @@ class PeleLM : public amrex::AmrCore {
    int m_plotHeatRelease = 0;
    int m_plotStateSpec = 0;
    int m_plot_int = 0;
-   amrex::Real m_plot_per = -1.;
+   amrex::Real m_plot_per_approx = -1.;
+   amrex::Real m_plot_per_exact = -1.;
    int m_check_int = 0;
    int m_message_int = 10;
    int m_evaluatePlotVarCount = 0;
    int m_plot_grad_p = 1;
+   int m_ioDigits = 5;
    amrex::Vector<std::string> m_evaluatePlotVars;
 
    //-----------------------------------------------------------------------------
@@ -1172,6 +1181,7 @@ class PeleLM : public amrex::AmrCore {
    // Temporals
    int m_do_temporals = 0;
    int m_temp_int = 5;
+   int m_do_extremas = 0;
    int m_do_massBalance = 0;
    int m_do_energyBalance = 0;
    int m_do_speciesBalance = 0;
@@ -1187,6 +1197,7 @@ class PeleLM : public amrex::AmrCore {
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM> m_domainUmacFlux;
    
    std::ofstream tmpStateFile;
+   std::ofstream tmpExtremasFile;
    std::ofstream tmpMassFile;
    std::ofstream tmpSpecFile;
 
@@ -1221,6 +1232,7 @@ class PeleLM : public amrex::AmrCore {
    int m_EB_refine_LevMin = -1;
    int m_EB_refine_LevAdapt = -1;
    int m_signDistNeeded = 0;
+   amrex::Real m_derefineEBBuffer = 3.0;
    std::unique_ptr<amrex::MultiFab> m_signedDist0 = nullptr;
    amrex::Vector<amrex::Real> coveredState_h;
    amrex::Gpu::DeviceVector<amrex::Real> coveredState_d;
@@ -1259,6 +1271,7 @@ class PeleLM : public amrex::AmrCore {
    // MAC projection
    int m_mac_mg_verbose = 0;
    int m_mac_mg_max_coarsening_level = 100;
+   int m_mac_max_order = 4;
    amrex::Real m_mac_mg_rtol = 1.0e-11;   
    amrex::Real m_mac_mg_atol = 1.0e-14;
    std::string m_hypre_namespace_mac = "mac_hypre";
