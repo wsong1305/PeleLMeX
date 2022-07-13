@@ -22,9 +22,9 @@ set_Y_from_Phi(ProbParm const& prob_parm,
    auto eos = pele::physics::PhysicsType::eos();
    amrex::Real Xt[NUM_SPECIES] = {0.0};
    amrex::Real a = 0.0;
-   if ( prob_parm.fuelID == NXC7H16_ID ) {
-     a = 11.0;
-   }
+   // if ( prob_parm.fuelID == NXC7H16_ID ) {
+   //   a = 11.0;
+   // }
    Xt[prob_parm.oxidID] = 1.0 / ( 1.0 + phi_in / a + 0.79 / 0.21 );
    Xt[prob_parm.fuelID] = phi_in * Xt[prob_parm.oxidID] / a;
    Xt[prob_parm.bathID] = 1.0 - Xt[prob_parm.oxidID] - Xt[prob_parm.fuelID];
