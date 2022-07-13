@@ -26,6 +26,15 @@ void PeleLM::readProbParm()
     PeleLM::prob_parm->jet_cent[dir] = jcent[dir];
   }
   amrex::Print() << " Spray injection at: x = " << PeleLM::prob_parm->jet_cent[0] << " y = " << PeleLM::prob_parm->jet_cent[1] << " z = " << PeleLM::prob_parm->jet_cent[2] << std::endl;
+
+  if (PeleLM::prob_parm->part_stdev_dia < 0.) {
+    // If no standard deviation is specified, assume we are using Weibull distribution
+    if (!pp.contains("part_weibull_k")) {
+      amrex::Abort("Must specify either standard deviation or Weibull k value");
+    } else {
+      pp.get("part_weibull_k", PeleLM::prob_parm->part_weibull_k);
+    }
+  }
   // The cells are divided by this value when prescribing the jet inlet
   pp.get("jet_dia", PeleLM::prob_parm->jet_dia);
   pp.get("part_mean_dia", PeleLM::prob_parm->part_mean_dia);

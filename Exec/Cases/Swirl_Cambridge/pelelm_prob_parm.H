@@ -48,7 +48,8 @@ struct ProbParm
   amrex::Real jet_vel = 50.;
   // This is the spread of the jet
   amrex::Real spread_angle = 20.;
-
+  
+  amrex::Real part_weibull_k = 3.;
   amrex::Real part_mean_dia = 1.E-6;
   amrex::Real part_stdev_dia = 0.;
   amrex::Real mass_flow_rate = 2.3E-3;

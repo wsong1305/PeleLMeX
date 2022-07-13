@@ -55,14 +55,16 @@ prob.part_temp = 300.
 prob.part_mean_dia = 30E-6
 
 # Standard deviation of the particle diameter
-prob.part_stdev_dia = 1.5E-6
+# prob.part_stdev_dia = 1.5E-6
+prob.part_stdev_dia = -1.0 # set to negative value to use Weibull distribution
+prob.part_weibull_k = 3.0
 
 # Jet properties
 prob.gas_jet_dia = 0.15e-3 
 prob.jet_dia = 0.15e-3 #spray diameter
 prob.jets_per_dir = 1
 prob.jet_start_time = 0.
-prob.jet_end_time = 10.E+0
+prob.jet_end_time = 1000.E+0
 prob.jet_vel = 9.9
 prob.jet_cent = 0.0  0.0  0.0
 prob.jet_dx_mod = 42.
@@ -71,7 +73,7 @@ prob.mass_flow_rate = 0.12e-3 #kg/s
 # The polar angle in degrees relative to the Z axis
 prob.jet_angle = 30.
 # The spreading angle in degrees
-prob.spread_angle = 6.
+prob.spread_angle = 0.
 # The bounds on the azimuthal angle in degrees
 prob.jet_azi_lo = 0.
 prob.jet_azi_hi = 360.
@@ -87,7 +89,7 @@ particles.mass_transfer = 1
 particles.init_function = 1 # Sprays are initialized using SprayParticleInitInsert.cpp
 particles.write_spray_ascii_files = 0
 particles.parcel_size = 10. # Number of particles per parcel
-particles.fuel_species = NXC7H16
+particles.fuel_species = NC7H16
 # Properties for liquid n-heptane
 particles.fuel_crit_temp = 540.3 # K (at Pc = 1.8170 MPa)
 particles.fuel_boil_temp = 370. # K (at atmospheric conditions)
@@ -96,7 +98,7 @@ particles.fuel_latent = 360600
 particles.fuel_cp = 2263 # Cp at 298
 particles.fuel_rho = 683.75
 particles.use_splash_model = false
-particles.NXC7H16_psat = 4.02832 1268.636 -56.199 1.E5
+particles.NC7H16_psat = 4.02832 1268.636 -56.199 1.E5
 # particles.NC12H26_rho = 1569.56432408 -5.48793654915 0.0121644670893 -6.00307025807e-05
 
 #-------------------------EB CONTROL----------------------------
@@ -149,9 +151,9 @@ amr.Vz_hi.max_level = 0
 amr.Vz_hi.value_greater = 20
 amr.Vz_hi.field_name = z_velocity
 
-#amr.flame_tracer.max_level = 3
-#amr.flame_tracer.value_greater = 1.0e-1
-#amr.flame_tracer.field_name = Y(NXC7H16)
+amr.flame_tracer.max_level = 3
+amr.flame_tracer.value_greater = 1.0e-1
+amr.flame_tracer.field_name = Y(NC7H16)
 
 # amr.HR.max_level = 3
 # amr.HR.value_greater = 1.e8
