@@ -652,6 +652,12 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
       auto  const &temp_arr  = ldata_p->state.array(mfi,TEMP);
       const amrex::Real* prob_lo = geom[a_lev].ProbLo();
       const amrex::Real* dx = geom[a_lev].CellSize();
+      const amrex::Real prob_lo0 = prob_lo[0];
+      const amrex::Real prob_lo1 = prob_lo[1];
+      const amrex::Real prob_lo2 = prob_lo[2];
+      const amrex::Real dx0 = dx[0];
+      const amrex::Real dx1 = dx[1];
+      const amrex::Real dx2 = dx[2];
       amrex::ParallelFor(bx, [=]
       AMREX_GPU_DEVICE (int i, int j, int k) noexcept
       {
@@ -667,19 +673,18 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
           massfrac[N2_ID] = 1.0 - sumYs;
 
           if(lprobparm->ignition){
-            const amrex::Real x[AMREX_SPACEDIM] = {AMREX_D_DECL(prob_lo[0] + (i + 0.5) * dx[0],
-                                                                prob_lo[1] + (j + 0.5) * dx[1],
-                                                                prob_lo[2] + (k + 0.5) * dx[2])};
-            amrex::Real r = sqrt(pow((0.0-x[0]),2)+pow((0.0-x[1]),2));
-            if(x[2] > 0.0 and x[2] < 20.0e-3 and r <= 11.5e-3){
-              temp_arr(i,j,k) = 2300.;
-              // for (int n = 0; n < NUM_SPECIES; n++){
-              //     massfrac[n] = 0.0;
-              // }
-              // massfrac[H2O_ID] = 0.12602837383747101;
-              // massfrac[CO2_ID] = 4.2060650885105133E-002;
-              // massfrac[N2_ID]  = 1.0 - massfrac[H2O_ID] - massfrac[CO2_ID];
+            const amrex::RealVect x(AMREX_D_DECL(prob_lo0 + (i + 0.5) * dx0,
+	        				 prob_lo1 + (j + 0.5) * dx1,
+	        				 prob_lo2 + (k + 0.5) * dx2));            
+	   
+	    amrex::Real r = sqrt(pow((0.0-x[0]),2)+pow((0.0-x[1]),2));
+            
+            if(x[2] > lprobparm->ign_region[0] and x[2] < lprobparm->ign_region[1] and r <= lprobparm->ign_region[2]){
+            //if(x[2] > lprobparm->ign_region[0]){
+	 //   if (x[2] > 1.E-3 && x[2] < 5.E-3) {
+	        temp_arr(i,j,k) = 2300.;
             }
+            
           }
           // Get density
           Real P_cgs = lprobparm->P_mean * 10.0;
