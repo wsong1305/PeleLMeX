@@ -43,7 +43,6 @@ prob.U_c        = 0.0   #coflow velocity
 prob.swirl_angle= 10
 prob.U_jet      = 200.0
 prob.D_jet      = 10.e-3
-prob.jet_angle  = 30
 prob.phi_jet    = 8.0
 # pmf.datafile = "pmfdata.dat"
 
@@ -71,7 +70,7 @@ prob.jet_dx_mod = 42.
 prob.mass_flow_rate = 0.12e-3 #kg/s
 
 # The polar angle in degrees relative to the Z axis
-prob.jet_angle = 30.
+prob.jet_angle = 45.
 # The spreading angle in degrees
 prob.spread_angle = 0.
 # The bounds on the azimuthal angle in degrees
@@ -117,10 +116,10 @@ EB.loc_x            = 12.5e-3
 EB.loc_y            = 0.0e-3
 
 #-------------------------IO CONTROL----------------------------
-# amr.restart             = chk00781
+# amr.restart             = chk02250
 amr.initDataPlt         = non_reactive_air/plt02744
 amr.check_file          = chk          # root name of checkpoint file
-amr.check_int           = 100          # number of timesteps between checkpoints
+amr.check_int           = 250          # number of timesteps between checkpoints
 amr.plot_file           = plt          # root name of plot file
 # amr.plot_int            = 50          # number of timesteps between plot files
 amr.plot_per            = 5.e-4
@@ -137,7 +136,7 @@ peleLM.sdc_iterMax = 1
 peleLM.floor_species = 1
 
 #--------------------REFINEMENT CONTROL------------------------
-amr.refinement_indicators = lo_temp Vz_hi inBox # flame_tracer  
+amr.refinement_indicators = lo_temp Vz_hi inBox flame_tracer  
 
 amr.inBox.max_level     = 10
 amr.inBox.in_box_lo     =   -1.0e-3      -1.0e-3      0.0e-3
@@ -188,8 +187,8 @@ amrex.fpe_trap_overflow = 1
 amrex.abort_on_out_of_gpu_memory=1
 amrex.the_arena_is_managed = 1
 
-nodal_proj.verbose = 2
-mac_proj.verbose   = 2
+nodal_proj.verbose = 0
+mac_proj.verbose   = 0
 nodal_proj.atol = 1.0e-10
 nodal_proj.rtol = 1.0e-10
 
