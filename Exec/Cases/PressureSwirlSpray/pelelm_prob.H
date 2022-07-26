@@ -42,7 +42,7 @@ void pelelm_initdata(int i, int j, int k,
     amrex::Real massfrac[NUM_SPECIES] = {0.0};
 
     
-    massfrac[NXC7H16_ID] = 0.0;
+    massfrac[NC7H16_ID] = 0.0;
     massfrac[O2_ID] = 0.233;
     massfrac[N2_ID] = 0.767;
 
