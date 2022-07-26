@@ -3,7 +3,7 @@ AMREX_HOME         ?= ${TOP}/amrex
 PELELMEX_HOME      ?= ${TOP}/PeleLMeX
 PELE_PHYSICS_HOME  ?= ${TOP}/PelePhysics
 AMREX_HYDRO_HOME   ?= ${TOP}/AMReX-Hydro
-PELLEMP_HOME       ?= ${TOP}/PeleMP
+PELEMP_HOME        ?= ${TOP}/PeleMP
 
 
 # AMReX
@@ -29,7 +29,7 @@ SPRAY_FUEL_NUM = 1
 CEXE_sources += SprayParticlesInitInsert.cpp
 
 # PelePhysics
-Chemistry_Model = heptane_fc
+Chemistry_Model = heptane_3sp
 Eos_Model	    = Fuego
 Transport_Model = Simple
 
