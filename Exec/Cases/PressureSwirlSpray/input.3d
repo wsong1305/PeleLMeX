@@ -13,7 +13,7 @@ peleLM.hi_bc = Outflow  SlipWallAdiab  SlipWallAdiab
 #-------------------------AMR CONTROL----------------------------
 amr.n_cell          = 64 64 64      # Level 0 number of cells in each direction   
 amr.v               = 1                # AMR verbose
-amr.max_level       = 0                # maximum level number allowed
+amr.max_level       = 2                # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2          # refinement ratio
 amr.regrid_int      = 5                # how often to regrid
 amr.n_error_buf     = 2 2 2 2          # number of buffer cells in error est
@@ -27,23 +27,23 @@ prob.P_mean = 101325.0
 prob.T_mean = 300.0
 prob.Vcoflow = 0.0
 
-prob.mass_flow_rate = 0.0005
+prob.mass_flow_rate = 0.005
 prob.spray_temp = 300.0
-prob.pressure_swirl_theta = 30.0
-prob.pressure_swirl_r0 = 0.001
+prob.pressure_swirl_theta = 20.0
+prob.pressure_swirl_r0 = 0.0005
 prob.pressure_swirl_rmsvel = 0.05
 
 #--------------------SPRAY PARTICLE DATA-----------------------
 peleLM.do_spray_particles = 1
-particles.v = 4
+particles.v = 1
 particles.plot_src = 1
-particles.mom_transfer = 0
-particles.mass_transfer = 0
+particles.mom_transfer = 1
+particles.mass_transfer = 1
 particles.init_function = 1 # Sprays are initialized using SprayParticleInitInsert.cpp
 #particles.init_file = spray00500.p3d
 #particles.write_spray_ascii_files = 1
 particles.parcel_size = 2. # Number of particles per parcel
-particles.fuel_species = NXC7H16
+particles.fuel_species = NC7H16
 # Properties for liquid decane
 particles.fuel_crit_temp = 540. # K
 particles.fuel_boil_temp = 371.6 # K
@@ -56,7 +56,7 @@ particles.fuel_rho = 681.43
 # Coefficients for saturation pressure using Antoine equation
 # These are from the NIST website
 # Last coefficient converts units, in this case bar, to Pa
-particles.NXC7H16_psat = 4.02832 1268.636 -56.199 1.E5
+particles.NC7H16_psat = 4.02832 1268.636 -56.199 1.E5
 
 particles.use_splash_model = false
 
@@ -71,23 +71,23 @@ peleLM.floor_species = 1
 peleLM.deltaT_verbose = 0
 peleLM.num_init_iter = 0
 
-amr.restart = chk00050
+#amr.restart = chk00050
 #amr.regrid_on_restart = 1
 amr.check_int = 50
 amr.plot_int = 20
-amr.max_step = 80
+amr.max_step = 400
 amr.dt_shrink = 0.1
 amr.init_dt = 1.0e-6
 amr.stop_time = 1.1
 #amr.stop_time = 1.00
-amr.cfl = 0.5
+amr.cfl = 0.8
 amr.derive_plot_vars = avg_pressure mag_vort mass_fractions mixture_fraction
 
-peleLM.fuel_name = NXC7H16
+peleLM.fuel_name = NC7H16
 peleLM.mixtureFraction.format = Cantera
 peleLM.mixtureFraction.type   = mass
 peleLM.mixtureFraction.oxidTank = O2:0.233 N2:0.767
-peleLM.mixtureFraction.fuelTank = NXC7H16:1.0
+peleLM.mixtureFraction.fuelTank = NC7H16:1.0
 
 peleLM.chem_integrator = "ReactorNull"
 
@@ -101,10 +101,13 @@ peleLM.do_temporals = 1
 peleLM.do_mass_balance = 1
 
 #--------------------REFINEMENT CONTROL------------------------
-amr.refinement_indicators = temp
-amr.temp.max_level     = 2
-amr.temp.value_greater = 1500
-amr.temp.field_name    = temp
+amr.refinement_indicators = fuel fuel_f
+amr.fuel.max_level     = 1
+amr.fuel.value_greater = 0.02
+amr.fuel.field_name    = Y(NC7H16)
+amr.fuel_f.max_level     = 2
+amr.fuel_f.value_greater = 0.1
+amr.fuel_f.field_name    = Y(NC7H16)
 
 #amr.refinement_indicators = magVort
 #amr.magVort.max_level     = 1
