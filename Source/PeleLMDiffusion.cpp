@@ -74,6 +74,14 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
       computeDifferentialDiffusionFluxes(a_time, GetVecOfArrOfPtrs(fluxes), GetVecOfArrOfPtrs(diffData->wbar_fluxes));
    }
 
+   // If doing species balances, compute face domain integrals
+   // using level 0 since we've averaged down the fluxes already
+   // Factor for SDC is 0.5 is for Dn and -0.5 for Dnp1
+   if ((m_sdcIter == 0 || m_sdcIter == m_nSDCmax)  && m_do_speciesBalance) {
+       Real sdc_weight = (a_time == AmrOldTime) ? 0.5 : -0.5;
+       addRhoYFluxes(GetArrOfConstPtrs(fluxes[0]),geom[0], sdc_weight);
+   }
+
    //----------------------------------------------------------------
    // TODO simplify the following ...
    // Compute divergence/fill a_viscTerm
@@ -88,13 +96,13 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
                        GetVecOfPtrs(diffData->Dn), 0,
                        GetVecOfArrOfPtrs(fluxes), 0,
                        NUM_SPECIES, 1, bcRecSpec_d.dataPtr(), -1.0, m_dt);
-      auto bcRecTemp = fetchBCRecArray(TEMP,1); 
+      auto bcRecTemp = fetchBCRecArray(TEMP,1);
       auto bcRecTemp_d = convertToDeviceVector(bcRecTemp);
       fluxDivergenceRD(GetVecOfConstPtrs(getTempVect(AmrOldTime)), 0,
                        GetVecOfPtrs(diffData->Dn), NUM_SPECIES,
                        GetVecOfArrOfPtrs(fluxes), NUM_SPECIES,
                        1, 1, bcRecTemp_d.dataPtr(), -1.0, m_dt);
-      auto bcRecRhoH = fetchBCRecArray(RHOH,1); 
+      auto bcRecRhoH = fetchBCRecArray(RHOH,1);
       auto bcRecRhoH_d = convertToDeviceVector(bcRecRhoH);
       fluxDivergenceRD(GetVecOfConstPtrs(getRhoHVect(AmrOldTime)), 0,
                        GetVecOfPtrs(diffData->Dn), NUM_SPECIES+1,
@@ -111,13 +119,13 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
                        GetVecOfPtrs(diffData->Dnp1), 0,
                        GetVecOfArrOfPtrs(fluxes), 0,
                        NUM_SPECIES, 1, bcRecSpec_d.dataPtr(), -1.0, m_dt);
-      auto bcRecTemp = fetchBCRecArray(TEMP,1); 
+      auto bcRecTemp = fetchBCRecArray(TEMP,1);
       auto bcRecTemp_d = convertToDeviceVector(bcRecTemp);
       fluxDivergenceRD(GetVecOfConstPtrs(getTempVect(AmrNewTime)), 0,
                        GetVecOfPtrs(diffData->Dnp1), NUM_SPECIES,
                        GetVecOfArrOfPtrs(fluxes), NUM_SPECIES,
                        1, 1, bcRecTemp_d.dataPtr(), -1.0, m_dt);
-      auto bcRecRhoH = fetchBCRecArray(RHOH,1); 
+      auto bcRecRhoH = fetchBCRecArray(RHOH,1);
       auto bcRecRhoH_d = convertToDeviceVector(bcRecRhoH);
       fluxDivergenceRD(GetVecOfConstPtrs(getRhoHVect(AmrNewTime)), 0,
                        GetVecOfPtrs(diffData->Dnp1), NUM_SPECIES+1,
@@ -169,6 +177,25 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
    // Get the species BCRec
    auto bcRecSpec = fetchBCRecArray(FIRSTSPEC,NUM_SPECIES);
 
+#ifdef PELE_USE_EFIELD
+   // Get the species diffusion fluxes from the DiffusionOp
+   // Don't average down just yet
+   int do_avgDown = 0;
+   getMCDiffusionOp(NUM_SPECIES-NUM_IONS)->computeDiffFluxes(a_fluxes, 0,
+                                                             GetVecOfConstPtrs(getSpeciesVect(a_time)), 0,
+                                                             GetVecOfConstPtrs(getDensityVect(a_time)),
+                                                             GetVecOfConstPtrs(getDiffusivityVect(a_time)), 0, bcRecSpec,
+                                                             NUM_SPECIES-NUM_IONS, -1.0, do_avgDown);
+   // Ions one by one
+   for ( int n = 0; n < NUM_IONS; n++) {
+      auto bcRecIons = fetchBCRecArray(FIRSTSPEC+NUM_SPECIES-NUM_IONS+n,1);
+      getDiffusionOp()->computeDiffFluxes(a_fluxes, NUM_SPECIES-NUM_IONS+n,
+                                          GetVecOfConstPtrs(getSpeciesVect(a_time)), NUM_SPECIES-NUM_IONS+n,
+                                          GetVecOfConstPtrs(getDensityVect(a_time)),
+                                          GetVecOfConstPtrs(getDiffusivityVect(a_time)), 0, bcRecIons,
+                                          1, -1.0, do_avgDown);
+   }
+#else
    // Get the species diffusion fluxes from the DiffusionOp
    // Don't average down just yet
    int do_avgDown = 0;
@@ -177,6 +204,7 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
                                                     GetVecOfConstPtrs(getDensityVect(a_time)),
                                                     GetVecOfConstPtrs(getDiffusivityVect(a_time)), 0, bcRecSpec,
                                                     NUM_SPECIES, -1.0, do_avgDown);
+#endif
 
    // Add the wbar term
    if (m_use_wbar) {
@@ -305,15 +333,13 @@ void PeleLM::addWbarTerm(const Vector<Array<MultiFab*,AMREX_SPACEDIM> > &a_spflu
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
       {
-         FArrayBox rhoY_ed;
          for (MFIter mfi(*a_beta[lev],TilingIfNotGPU()); mfi.isValid();++mfi)
          {
             for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
 
                // Get edge centered rhoYs
                const Box ebx = mfi.nodaltilebox(idim);
-               rhoY_ed.resize(ebx,NUM_SPECIES);
-               Elixir rhoY_el = rhoY_ed.elixir();
+               FArrayBox rhoY_ed(ebx, NUM_SPECIES, The_Async_Arena());
 
                const Box& edomain = amrex::surroundingNodes(domain,idim);
                auto const& rhoY_arr = a_spec[lev]->const_array(mfi);
@@ -505,7 +531,7 @@ void PeleLM::computeSpeciesEnthalpyFlux(const Vector<Array<MultiFab*,AMREX_SPACE
             {
                Hi_arr(i,j,k) = 0.0;
             });
-         } else if (flagfab.getType(gbx) != FabType::regular ) {     // EB containing boxes 
+         } else if (flagfab.getType(gbx) != FabType::regular ) {     // EB containing boxes
             amrex::ParallelFor(gbx, [Temp_arr, Hi_arr, flag]
             AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
@@ -551,7 +577,7 @@ void PeleLM::computeSpeciesEnthalpyFlux(const Vector<Array<MultiFab*,AMREX_SPACE
                   enthflux_ar(i,j,k) += spflux_ar(i,j,k,n)*enth_ar(i,j,k,n);
               }
            });
-         } 
+         }
       }
    }
 }
@@ -608,6 +634,29 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
    // Get the species BCRec
    auto bcRecSpec = fetchBCRecArray(FIRSTSPEC,NUM_SPECIES);
 
+#ifdef PELE_USE_EFIELD
+   // Solve for \widetilda{rhoY^{np1,kp1}}
+   // -> return the uncorrected fluxes^{np1,kp1}
+   // -> and the partially updated species (not including wbar or flux correction)
+   getMCDiffusionOp(NUM_SPECIES-NUM_IONS)->diffuse_scalar(GetVecOfPtrs(getSpeciesVect(AmrNewTime)), 0,
+                                                          GetVecOfConstPtrs(advData->Forcing), 0,
+                                                          GetVecOfArrOfPtrs(fluxes), 0,
+                                                          GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this is the acoeff of LinOp
+                                                          GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this triggers proper scaling by density
+                                                          GetVecOfConstPtrs(getDiffusivityVect(AmrNewTime)), 0, bcRecSpec,
+                                                          NUM_SPECIES-NUM_IONS, 0, m_dt);
+   // Ions one by one
+   for ( int n = 0; n < NUM_IONS; n++) {
+      auto bcRecIons = fetchBCRecArray(FIRSTSPEC+NUM_SPECIES-NUM_IONS+n,1);
+      getDiffusionOp()->diffuse_scalar(GetVecOfPtrs(getSpeciesVect(AmrNewTime)), NUM_SPECIES-NUM_IONS+n,
+                                       GetVecOfConstPtrs(advData->Forcing), NUM_SPECIES-NUM_IONS+n,
+                                       GetVecOfArrOfPtrs(fluxes), NUM_SPECIES-NUM_IONS+n,
+                                       GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this is the acoeff of LinOp
+                                       GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this triggers proper scaling by density
+                                       GetVecOfConstPtrs(getDiffusivityVect(AmrNewTime)), 0, bcRecIons,
+                                       1, 0, m_dt);
+   }
+#else
    // Solve for \widetilda{rhoY^{np1,kp1}}
    // -> return the uncorrected fluxes^{np1,kp1}
    // -> and the partially updated species (not including wbar or flux correction)
@@ -618,6 +667,7 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
                                                  GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this triggers proper scaling by density
                                                  GetVecOfConstPtrs(getDiffusivityVect(AmrNewTime)), 0, bcRecSpec,
                                                  NUM_SPECIES, 0, m_dt);
+#endif
 
    // Add lagged Wbar term
    // Computed in computeDifferentialDiffusionTerms at t^{n} if first SDC iteration, t^{np1,k} otherwise
@@ -690,6 +740,12 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
 
    // FillPatch species again before going into the enthalpy solve
    fillPatchSpecies(AmrNewTime);
+
+   // If doing species balances, compute face domain integrals
+   // using level 0 since we've averaged down the fluxes already
+   if (m_sdcIter == m_nSDCmax && m_do_speciesBalance) {
+       addRhoYFluxes(GetArrOfConstPtrs(fluxes[0]),geom[0]);
+   }
    //------------------------------------------------------------------------
 
    //------------------------------------------------------------------------
@@ -882,27 +938,19 @@ void PeleLM::deltaTIter_update(int a_dtiter,
    //------------------------------------------------------------------------
    // Recompute RhoH
    for (int lev = 0; lev <= finest_level; ++lev) {
-
       auto ldata_p = getLevelDataPtr(lev,AmrNewTime);
-
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-      for (MFIter mfi(ldata_p->state,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+      auto const& sma = ldata_p->state.arrays();
+      amrex::ParallelFor(ldata_p->state, [=]
+      AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
       {
-         const Box& bx       = mfi.tilebox();
-         auto const& rho     = ldata_p->state.const_array(mfi,DENSITY);
-         auto const& rhoY    = ldata_p->state.const_array(mfi,FIRSTSPEC);
-         auto const& T       = ldata_p->state.const_array(mfi,TEMP);
-         auto const& rhoHm   = ldata_p->state.array(mfi,RHOH);
-
-         amrex::ParallelFor(bx, [rho, rhoY, T, rhoHm]
-         AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-         {
-            getRHmixGivenTY( i, j, k, rho, rhoY, T, rhoHm );
-         });
-      }
+         getRHmixGivenTY( i,j,k,
+                          Array4<Real const>(sma[box_no],DENSITY),
+                          Array4<Real const>(sma[box_no],FIRSTSPEC),
+                          Array4<Real const>(sma[box_no],TEMP),
+                          Array4<Real      >(sma[box_no],RHOH));
+      });
    }
+   Gpu::streamSynchronize();
 }
 
 void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
@@ -960,8 +1008,9 @@ void PeleLM::computeDivTau(const TimeStamp &a_time,
                            int use_density,
                            Real scale)
 {
-   // Get the first velocity component BCRec
-   auto bcRec = fetchBCRecArray(VELX,1);
+   BL_PROFILE("PeleLM::computeDivTau()");
+   // Get the density component BCRec to get viscosity on faces
+   auto bcRec = fetchBCRecArray(DENSITY,1);
 
    if (use_density) {
       getDiffusionTensorOp()->compute_divtau(a_divtau,
@@ -980,8 +1029,9 @@ void PeleLM::computeDivTau(const TimeStamp &a_time,
 
 void PeleLM::diffuseVelocity()
 {
-   // Get the first velocity component BCRec
-   auto bcRec = fetchBCRecArray(VELX,1);
+   BL_PROFILE("PeleLM::diffuseVelocity()");
+   // Get the density component BCRec to get viscosity on faces
+   auto bcRec = fetchBCRecArray(DENSITY,1);
 
    // CrankNicholson 0.5 coeff
    Real dt_lcl = 0.5 * m_dt;
