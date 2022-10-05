@@ -17,7 +17,6 @@
 #include "ReactorBase.H"
 #include <PeleLM_Index.H>
 #include <PeleLMDerive.H>
-#include <pelelm_prob_parm.H>
 #include <DiffusionOp.H>
 #include <DiagBase.H>
 
@@ -98,9 +97,6 @@ class PeleLM : public amrex::AmrCore {
 
    // ReadIOParameters
    void readIOParameters();
-
-   // ReadProblemParameters
-   void readProbParm();
 
    // ReadGridFile
   void readGridFile(std::string grid_file,
@@ -1038,18 +1034,11 @@ class PeleLM : public amrex::AmrCore {
    amrex::Vector<amrex::BoxArray> m_initial_ba;
    amrex::Vector<amrex::BoxArray> m_regrid_ba;
 
-   // Problem parameters
-   ProbParm* prob_parm;
-   ProbParm* prob_parm_d;
-
 #ifdef PELELM_USE_SOOT
    // Soot parameters
    SootModel* soot_model;
    bool do_soot_solve;
 #endif
-
-   // PMF parameters
-   pele::physics::PMF::PmfData pmf_data;
 
    // Transport pointer
    static pele::physics::transport::TransportParams<
@@ -1063,7 +1052,8 @@ class PeleLM : public amrex::AmrCore {
    pele::physics::turbinflow::TurbInflow turb_inflow;
 
    // Problem helper
-   std::unique_ptr<pele::physics::ProblemHelper> pbHelper;
+   std::string m_probType;
+   std::unique_ptr<pele::physics::ProblemHelper> m_pbHelper;
 
    // Diagnostics
    amrex::Vector<std::unique_ptr<DiagBase>> m_diagnostics; 

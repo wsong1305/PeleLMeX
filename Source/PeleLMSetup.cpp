@@ -114,26 +114,22 @@ void PeleLM::Setup() {
    initMixtureFraction();
    initProgressVariable();
 
+   // Initializing problem
+   amrex::Print() << " Initialization of PeleLMeX case ... \n";
+   ParmParse pp("peleLM");
+   pp.get("probType",m_probType);
+   m_pbHelper = pele::physics::ProblemHelper::create(m_probType);
+   m_pbHelper->init(m_pOld);
+
    // Initiliaze turbulence injection
    turb_inflow.init(Geom(0));
 
    // Initiliaze BCs
    setBoundaryConditions();
 
-   // Problem parameters
-   prob_parm = new ProbParm{};
-   prob_parm_d = (ProbParm*)The_Arena()->alloc(sizeof(ProbParm));
-
-   // Problem parameters
-   readProbParm();
-
    // Initialize ambient pressure
    // Will be overwriten on restart.
-   m_pOld = prob_parm->P_mean;
-   m_pNew = prob_parm->P_mean;
-
-   // Copy problem parameters into device copy
-   Gpu::copy(Gpu::hostToDevice, prob_parm, prob_parm+1,prob_parm_d);
+   m_pNew = m_pOld;
 }
 
 void PeleLM::readParameters() {

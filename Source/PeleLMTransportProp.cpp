@@ -1,6 +1,5 @@
 #include <PeleLM.H>
 #include <PeleLM_K.H>
-#include <pelelm_prob.H>
 #ifdef PELE_USE_EFIELD
 #include <PeleLMEF_K.H>
 #endif
@@ -151,7 +150,7 @@ PeleLM::getDiffusivity(int lev, int beta_comp, int ncomp, int doZeroVisc,
             amrex::ParallelFor(ebx, [=]
             AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                zero_visc(i, j, k, diff_ec, geomdata, edomain, idim, beta_comp, ncomp);
+                m_pbHelper->zero_visc(i, j, k, diff_ec, geomdata, edomain, idim, beta_comp, ncomp);
             });
          }
       }

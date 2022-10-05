@@ -1,5 +1,4 @@
 #include <PeleLM_Index.H>
-#include <pelelm_prob.H>
 #include <PMFData.H>
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_Geometry.H>
@@ -8,17 +7,14 @@ using namespace amrex;
 
 struct PeleLMCCFillExtDirState
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
    int m_do_turbInflow = 0;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirState(ProbParm const* a_prob_parm,
-                                     pele::physics::PMF::PmfData::DataContainer const* a_pmf_data,
+   constexpr PeleLMCCFillExtDirState(pele::physics::ProblemHelper *a_ph,
                                      int a_nAux, int do_turbInflow)
-                                     : lprobparm(a_prob_parm), lpmfdata(a_pmf_data),
+                                     : m_ph(a_ph),
                                        m_nAux(a_nAux), m_do_turbInflow(do_turbInflow) {}
 
    AMREX_GPU_DEVICE
@@ -49,7 +45,7 @@ struct PeleLMCCFillExtDirState
          for (int n = 0; n < std::min(numcomp,NVAR); n++) {
 
             // bcnormal handles all the state components at once
-            amrex::Real s_ext[NVAR] = {0.0};
+            amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
             // Get current state component BC
             const int* bc = bcr[n].data();
@@ -65,7 +61,7 @@ struct PeleLMCCFillExtDirState
                  }
                }
                // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-               bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+               m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
                state(iv,n) = s_ext[n];
             }
          }
@@ -74,7 +70,7 @@ struct PeleLMCCFillExtDirState
          for (int n = 0; n < std::min(numcomp,NVAR); n++) {
 
             // bcnormal handles all the state components at once
-            amrex::Real s_ext[NVAR] = {0.0};
+            amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
             // Get current state component BC
             const int* bc = bcr[n].data();
@@ -90,7 +86,7 @@ struct PeleLMCCFillExtDirState
                  }
                }
                // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-               bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+               m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
                state(iv,n) = s_ext[n];
             }
          }
@@ -100,15 +96,12 @@ struct PeleLMCCFillExtDirState
 
 struct PeleLMCCFillExtDirSpec
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirSpec(ProbParm const* a_prob_parm,
-                                    pele::physics::PMF::PmfData::DataContainer const* a_pmf_data, int a_nAux)
-                                   : lprobparm(a_prob_parm), lpmfdata(a_pmf_data), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirSpec(pele::physics::ProblemHelper *a_ph, int a_nAux)
+                                   : m_ph(a_ph), m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(
@@ -138,14 +131,14 @@ struct PeleLMCCFillExtDirSpec
          const int* bc = bcr[n].data();
 
          // bcnormal handles all the state components at once
-         amrex::Real s_ext[NVAR] = {0.0};
+         amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
          for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
             // Low
             if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
                // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-               bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+               m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
                rhoY(iv,dcomp+n) = s_ext[FIRSTSPEC+n];
 
@@ -153,7 +146,7 @@ struct PeleLMCCFillExtDirSpec
             } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
                // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-               bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+               m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
                rhoY(iv,dcomp+n) = s_ext[FIRSTSPEC+n];
             }
@@ -164,15 +157,12 @@ struct PeleLMCCFillExtDirSpec
 
 struct PeleLMCCFillExtDirDens
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirDens(ProbParm const* a_prob_parm,
-                                    pele::physics::PMF::PmfData::DataContainer const* a_pmf_data, int a_nAux)
-                                   : lprobparm(a_prob_parm), lpmfdata(a_pmf_data), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirDens(pele::physics::ProblemHelper *a_ph, int a_nAux)
+                                   : m_ph(a_ph), m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(
@@ -200,14 +190,14 @@ struct PeleLMCCFillExtDirDens
       const int* bc = bcr->data();
 
       // bcnormal handles all the state components at once
-      amrex::Real s_ext[NVAR] = {0.0};
+      amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
       for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
          // Low
          if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             state(iv,dcomp) = s_ext[DENSITY];
 
@@ -215,7 +205,7 @@ struct PeleLMCCFillExtDirDens
          } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             state(iv,dcomp) = s_ext[DENSITY];
 
@@ -226,15 +216,12 @@ struct PeleLMCCFillExtDirDens
 
 struct PeleLMCCFillExtDirRhoH
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirRhoH(ProbParm const* a_prob_parm,
-                                    pele::physics::PMF::PmfData::DataContainer const* a_pmf_data, int a_nAux)
-                                   : lprobparm(a_prob_parm), lpmfdata(a_pmf_data), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirRhoH(pele::physics::ProblemHelper *a_ph, int a_nAux)
+                                   : m_ph(a_ph), m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(
@@ -262,14 +249,14 @@ struct PeleLMCCFillExtDirRhoH
       const int* bc = bcr->data();
 
       // bcnormal handles all the state components at once
-      amrex::Real s_ext[NVAR] = {0.0};
+      amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
       for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
          // Low
          if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             rhoH(iv) = s_ext[RHOH];
 
@@ -277,7 +264,7 @@ struct PeleLMCCFillExtDirRhoH
          } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             rhoH(iv) = s_ext[RHOH];
 
@@ -288,15 +275,12 @@ struct PeleLMCCFillExtDirRhoH
 
 struct PeleLMCCFillExtDirTemp
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirTemp(ProbParm const* a_prob_parm,
-                                    pele::physics::PMF::PmfData::DataContainer const* a_pmf_data, int a_nAux)
-                                   : lprobparm(a_prob_parm), lpmfdata(a_pmf_data), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirTemp(pele::physics::ProblemHelper *a_ph, int a_nAux)
+                                   : m_ph(a_ph), m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(
@@ -324,14 +308,14 @@ struct PeleLMCCFillExtDirTemp
       const int* bc = bcr->data();
 
       // bcnormal handles all the state components at once
-      amrex::Real s_ext[NVAR] = {0.0};
+      amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
       for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
          // Low
          if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             state(iv,dcomp) = s_ext[TEMP];
 
@@ -339,7 +323,7 @@ struct PeleLMCCFillExtDirTemp
          } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             state(iv,dcomp) = s_ext[TEMP];
 
@@ -351,15 +335,12 @@ struct PeleLMCCFillExtDirTemp
 #ifdef PELE_USE_EFIELD
 struct PeleLMCCFillExtDirnE
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirnE(ProbParm const* a_prob_parm,
-                                  pele::physics::PMF::PmfData::DataContainer const* a_pmf_data, int a_nAux)
-                                 : lprobparm(a_prob_parm), lpmfdata(a_pmf_data), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirnE(pele::physics::ProblemHelper *a_ph, int a_nAux)
+                                 : m_ph(a_ph), m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(
@@ -387,14 +368,14 @@ struct PeleLMCCFillExtDirnE
       const int* bc = bcr->data();
 
       // bcnormal handles all the state components at once
-      amrex::Real s_ext[NVAR] = {0.0};
+      amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
       for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
          // Low
          if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             nE(iv) = s_ext[NE];
 
@@ -402,7 +383,7 @@ struct PeleLMCCFillExtDirnE
          } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             nE(iv) = s_ext[NE];
 
@@ -415,15 +396,12 @@ struct PeleLMCCFillExtDirnE
 #ifdef PELE_USE_EFIELD
 struct PeleLMCCFillExtDirPhiV
 {
-
-   ProbParm const* lprobparm;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata;
+   pele::physics::ProblemHelper *m_ph;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirPhiV(ProbParm const* a_prob_parm,
-                                    pele::physics::PMF::PmfData::DataContainer const* a_pmf_data, int a_nAux)
-                                   : lprobparm(a_prob_parm), lpmfdata(a_pmf_data), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirPhiV(pele::physics::ProblemHelper *a_ph, int a_nAux)
+                                   : m_ph(a_ph), m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(
@@ -451,14 +429,14 @@ struct PeleLMCCFillExtDirPhiV
       const int* bc = bcr->data();
 
       // bcnormal handles all the state components at once
-      amrex::Real s_ext[NVAR] = {0.0};
+      amrex::Vector<amrex::Real> s_ext(NVAR,0.0);
 
       for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
          // Low
          if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             phiV(iv,dcomp) = s_ext[PHIV];
 
@@ -466,7 +444,7 @@ struct PeleLMCCFillExtDirPhiV
          } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
             // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+            m_ph->bcnormal(&x[0], m_nAux, s_ext, idir, 1, time, geom, m_ph->m_baseParams_d, m_ph->getPmfData());
 
             phiV(iv,dcomp) = s_ext[PHIV];
 
@@ -478,13 +456,11 @@ struct PeleLMCCFillExtDirPhiV
 
 struct PeleLMCCFillExtDirDummy
 {
-
-   ProbParm const* lprobparm;
    const int m_nAux;
 
    AMREX_GPU_HOST
-   constexpr PeleLMCCFillExtDirDummy(ProbParm const* a_prob_parm, int a_nAux)
-                                     : lprobparm(a_prob_parm), m_nAux(a_nAux) {}
+   constexpr PeleLMCCFillExtDirDummy(int a_nAux)
+                                     : m_nAux(a_nAux) {}
 
    AMREX_GPU_DEVICE
    void operator()(

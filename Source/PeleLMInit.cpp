@@ -1,5 +1,4 @@
 #include <PeleLM.H>
-#include <pelelm_prob.H>
 #ifdef AMREX_USE_EB
 #include <AMReX_EB_utils.H>
 #endif
@@ -369,26 +368,8 @@ void PeleLM::initLevelData(int lev) {
    ldata_p->press.setVal(0.0);
    ldata_p->gp.setVal(0.0);
 
-   // Prob/PMF datas
-   ProbParm const* lprobparm = prob_parm_d;
-   pele::physics::PMF::PmfData::DataContainer const* lpmfdata   = pmf_data.getDeviceData();
-
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-   for (MFIter mfi(ldata_p->state,TilingIfNotGPU()); mfi.isValid(); ++mfi)
-   {
-      const Box& bx = mfi.tilebox();
-      FArrayBox DummyFab(bx,1);
-      auto  const &state_arr   = ldata_p->state.array(mfi);
-      auto  const &aux_arr   = (m_nAux > 0) ? ldata_p->auxiliaries.array(mfi) : DummyFab.array();
-      amrex::ParallelFor(bx, [=,m_incompressible=m_incompressible]
-      AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-      {
-         pelelm_initdata(i, j, k, m_incompressible, state_arr, aux_arr,
-                         geomdata, *lprobparm, lpmfdata);
-      });
-   }
+   // Use the ProblemHelper to initialize data
+   m_pbHelper->initData(ldata_p->state,geomdata);
 
    if (!m_incompressible) {
       // Initialize thermodynamic pressure

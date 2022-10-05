@@ -22,8 +22,6 @@ PeleLM::~PeleLM()
    closeTempFile();
    typical_values.clear();
 
-   delete prob_parm;
-   The_Arena()->free(prob_parm_d);
    m_initial_ba.clear();
    m_regrid_ba.clear();
 #ifdef PELELM_USE_SOOT

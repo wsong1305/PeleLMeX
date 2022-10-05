@@ -747,8 +747,6 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
    ldata_p->press.setVal(0.0);
    ldata_p->gp.setVal(0.0);
 
-   ProbParm const* lprobparm = prob_parm_d;
-
    // Enforce rho and rhoH consistent with temperature and mixture
    // TODO the above handles species mapping (to some extent), but nothing enforce
    // sum of Ys = 1
@@ -762,7 +760,7 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
       auto  const &rhoY_arr  = ldata_p->state.array(mfi,FIRSTSPEC);
       auto  const &rhoH_arr  = ldata_p->state.array(mfi,RHOH);
       auto  const &temp_arr  = ldata_p->state.array(mfi,TEMP);
-      amrex::ParallelFor(bx, [=]
+      amrex::ParallelFor(bx, [=,pNew=m_pNew]
       AMREX_GPU_DEVICE (int i, int j, int k) noexcept
       {
           auto eos = pele::physics::PhysicsType::eos();
@@ -777,7 +775,7 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
           massfrac[N2_ID] = 1.0 - sumYs;
 
           // Get density
-          Real P_cgs = lprobparm->P_mean * 10.0;
+          Real P_cgs = pNew * 10.0;
           Real rho_cgs = 0.0;
           eos.PYT2R(P_cgs, massfrac, temp_arr(i,j,k), rho_cgs);
           rho_arr(i,j,k) = rho_cgs * 1.0e3;
