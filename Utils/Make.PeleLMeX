@@ -20,7 +20,7 @@ all: $(executable)
 #-----------------
 # PeleLMeX sources
 #-----------------
-LMdirs := Source Source/Diagnostics Source/Cases
+LMdirs := Source Source/Diagnostics Source/RegTests
 ifeq ($(USE_EFIELD),TRUE)
    DEFINES += -DPELE_USE_EFIELD
    LMdirs += Source/Efield Source/Efield/GMRES Source/Efield/LinOps
