@@ -17,10 +17,10 @@ all: $(executable)
 	$(SILENT) $(RM) AMReX_buildInfo.cpp
 	@echo SUCCESS
 
-#---------------
-# PeleLM sources
-#---------------
-LMdirs := Source Source/Diagnostics
+#-----------------
+# PeleLMeX sources
+#-----------------
+LMdirs := Source Source/Diagnostics Source/Cases
 ifeq ($(USE_EFIELD),TRUE)
    DEFINES += -DPELE_USE_EFIELD
    LMdirs += Source/Efield Source/Efield/GMRES Source/Efield/LinOps

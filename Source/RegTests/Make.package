@@ -1,0 +1,2 @@
+CEXE_headers += ProbPeriodicFlows.H ProbFlameSheet.H
+CEXE_sources += ProbPeriodicFlows.cpp ProbFlameSheet.cpp
