@@ -51,13 +51,6 @@ void PeleLM::readProbParm()
   r      .resize(line_count);
   scalars.resize(line_count);
 
-  amrex::Print() << "Resized local vectors" << std::endl;
-
-
-  // for (int col = 0; col < ncolumns; ++col) {
-  //   r[col].resize(line_count);
-  // }
-
   iss.clear();
   iss.seekg(0, std::ios::beg);
   std::getline(iss, firstline);
