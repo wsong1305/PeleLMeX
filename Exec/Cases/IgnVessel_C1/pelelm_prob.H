@@ -153,49 +153,18 @@ bcnormal(
     eta = 0.0;
   }
 
-  // amrex::Real mixfrac = interpolate(r, mixfrac_array, mixfrac_value_array);
-  
-  // ---- Interpolation of mixture fraction in radial direction -----
-  int iloc;
-  amrex::Real dxdx;
-  amrex::Real mixfrac = 0.0;
-
-  if (r <= prob_parm.radial_loc[0]) {
-    mixfrac =  prob_parm.mixfrac_value[0];
-  }
-  else if (r >= prob_parm.radial_loc[prob_parm.nlines-1]) {
-    mixfrac = prob_parm.mixfrac_value[prob_parm.nlines-1];
-  }
-  else{
-    for (int i = 0; i < prob_parm.nlines - 1; ++i) {
-      amrex::Real x1 = prob_parm.radial_loc[i];
-      amrex::Real x2 = prob_parm.radial_loc[i + 1];
-      if (r > x1 && r < x2) {
-        dxdx = (r - x1) / (x2 - x1);
-        iloc = i;
-      }
-    }
-
-    amrex::Real y1 = prob_parm.mixfrac_value[iloc];
-    amrex::Real y2 = prob_parm.mixfrac_value[iloc + 1];
-    mixfrac = y1 + (y2 - y1) * dxdx;
-
-  }
-  // -------- end of interpolation ---------
-
-
-  pele::physics::PMF::pmf(pmf_data, mixfrac, mixfrac, thermo_state);
+  pele::physics::PMF::pmf(pmf_data, r, r, thermo_state);
 
   s_ext[VELX] = 0.0;
   s_ext[VELY] = 0.0; 
-  s_ext[VELZ] = eta*prob_parm.U_jet;
+  s_ext[VELZ] = thermo_state[3]; //eta*prob_parm.U_jet;
 
   //Using tanh function to specify radial temperature distribution
-  s_ext[TEMP] = (1.0-eta)*prob_parm.T_in+prob_parm.T_jet*eta;
-  // s_ext[TEMP] = thermo_state[0];
+  // s_ext[TEMP] = (1.0-eta)*prob_parm.T_in+prob_parm.T_jet*eta;
+  s_ext[TEMP] = thermo_state[1];
 
   for (int n = 0; n < NUM_SPECIES; n++){
-    massfrac[n] = thermo_state[n+1];
+    massfrac[n] = thermo_state[n+4];
   }
 
   amrex::Real rho_cgs, P_cgs, RhoH_temp;

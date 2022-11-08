@@ -21,7 +21,7 @@ USE_EB          = FALSE
 COMP            = gnu
 USE_MPI         = TRUE
 USE_OMP         = FALSE
-USE_CUDA        = FALSE
+USE_CUDA        = TRUE
 USE_HIP         = FALSE
 
 # PeleLMeX

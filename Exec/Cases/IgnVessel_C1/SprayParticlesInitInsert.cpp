@@ -90,14 +90,14 @@ ThisJet::ThisJet(const std::string& jet_name, const amrex::Geometry& geom)
     std::getline(iss, remaininglines);
     std::istringstream sinput(remaininglines);
     sinput >> jet_radius_vec[i];
-    jet_radius_vec[i] /= 1000.; // Locations are in mm
+    // jet_radius_vec[i] /= 1000.; // Locations are in mm
     max_jet_dia = amrex::max<amrex::Real>(max_jet_dia, 2. * jet_radius_vec[i]);
     sinput >> mean_vals[temp_col][i];
     sinput >> std_vals[temp_col][i];
     sinput >> mean_vals[smd_col][i];
     sinput >> std_vals[smd_col][i];
-    mean_vals[smd_col][i] *= 1.E-6; // Diameters are in um
-    std_vals[smd_col][i] *= 1.E-6;
+    // mean_vals[smd_col][i] *= 1.E-6; // Diameters are in um
+    // std_vals[smd_col][i] *= 1.E-6;
     sinput >> mean_vals[vel_col][i];
     sinput >> std_vals[vel_col][i];
     m_avgDia += mean_vals[smd_col][i];
