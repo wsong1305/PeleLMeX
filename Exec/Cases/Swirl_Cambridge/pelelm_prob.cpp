@@ -18,6 +18,12 @@ void PeleLM::readProbParm()
    pp.query("U_jet"        ,  PeleLM::prob_parm->U_jet);
    pp.query("phi_jet"      ,  PeleLM::prob_parm->phi_jet);
    pp.query("swirl_angle"  ,  PeleLM::prob_parm->swirl_angle);
+   pp.query("ignition"     ,  PeleLM::prob_parm->ignition);
+   std::vector<amrex::Real> ign_loc(3,0.);
+   pp.queryarr("ign_region", ign_loc);
+   for (int n =0; n < 3; n++){
+	   PeleLM::prob_parm->ign_region[n] = ign_loc[n];
+   }
 
   pp.get("jet_vel", PeleLM::prob_parm->jet_vel);
   std::vector<amrex::Real> jcent(AMREX_SPACEDIM);
@@ -65,7 +71,7 @@ void PeleLM::readProbParm()
   PeleLM::prob_parm->jet_angle *= M_PI / 180.;
 
    PeleLM::prob_parm->bathID = N2_ID;  
-   // PeleLM::prob_parm->fuelID = NXC7H16_ID;  
-   PeleLM::prob_parm->fuelID = NC7H16_ID;  
+   PeleLM::prob_parm->fuelID = NXC7H16_ID;  
+   //PeleLM::prob_parm->fuelID = NC7H16_ID;  
    PeleLM::prob_parm->oxidID = O2_ID; 
 }
