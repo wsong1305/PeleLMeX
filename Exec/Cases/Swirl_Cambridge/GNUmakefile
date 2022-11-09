@@ -1,13 +1,12 @@
-PELEMP_HOME=/lustre/scratch/bsouzas/PeleMP/
+PELEMP_HOME=/global/homes/b/bsoriano/PeleMP
 
-TOP = ../../../..
+TOP = /global/homes/b/bsoriano/
 PELELMEX_HOME      ?= ${TOP}/PeleLMeX
 AMREX_HOME         ?= ${PELELMEX_HOME}/Submodules/amrex_hypre
 # AMREX_HOME         ?= ${PELELMEX_HOME}/Submodules/amrex
 PELE_PHYSICS_HOME  ?= ${PELELMEX_HOME}/Submodules/PelePhysics
 AMREX_HYDRO_HOME   ?= ${PELELMEX_HOME}/Submodules/AMReX-Hydro
-# HYPRE_HOME         ?= ${PELELMEX_HOME}/Submodules/hypre
-HYPRE_HOME          = /lustre/scratch/bsouzas/PeleLMeX/Submodules/hypre/install
+HYPRE_HOME         = /pscratch/sd/e/esclapez/hypre_install
 
 # AMReX
 DIM             = 3
@@ -29,8 +28,7 @@ USE_EFIELD      = FALSE
 USE_HYPRE       = TRUE
 
 # PelePhysics
-Chemistry_Model = heptane_3sp
-# Chemistry_Model = heptane_fc
+Chemistry_Model = heptane_fc
 # Chemistry_Model = air
 Eos_Model       = Fuego
 Transport_Model = Simple
@@ -41,5 +39,5 @@ SPRAY_FUEL_NUM = 1
 include $(PELELMEX_HOME)/Utils/Make.PeleLMeX
 
 ifeq ($(USE_CUDA),TRUE)
-DEFINES += -DAMREX_GPUS_PER_NODE=2
+DEFINES += -DAMREX_GPUS_PER_NODE=4
 endif
