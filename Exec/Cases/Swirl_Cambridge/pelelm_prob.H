@@ -331,8 +331,13 @@ bcnormal(
   s_ext[VELX] = vel_swirler_x;// + vel_jet_x; //+ vel_jet_x + vel_fluctuation_swirler_x;
   s_ext[VELY] = vel_swirler_y;// + vel_jet_y; //+ vel_jet_y + vel_fluctuation_swirler_y;
   s_ext[VELZ] = vel_swirler_z;// + vel_jet_z;
-
-  s_ext[TEMP] = prob_parm.T_in;
+  
+  if(time < 3.0e-3){
+    s_ext[TEMP] = 1800.;
+  }
+  else{
+    s_ext[TEMP] = prob_parm.T_in;
+  }
 
   // amrex::Real Exponential_Spec = 0.5*(1-((std::tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))-(prob_parm.D_jet/2))/(H))))*(tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))+(prob_parm.D_jet/2))/(H))));
 
