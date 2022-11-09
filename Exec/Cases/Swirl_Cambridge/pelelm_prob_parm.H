@@ -37,6 +37,7 @@ struct ProbParm
   int oxidID = -1;
     
   bool ignition = false;
+  amrex::GpuArray<amrex::Real, 3> ign_region;
   amrex::Real T0 = 900.;
   amrex::Real Y_O2 = 0.233;
   amrex::Real Y_N2 = 0.767;
