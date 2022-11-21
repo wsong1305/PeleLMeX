@@ -50,38 +50,19 @@ prob.ignition   = false
 prob.ign_region = 3.0e-3 10.e-3 10.e-3 # order is: first value not used; z_center; radius
 
 # Properties of injected particles
-prob.part_temp = 300.
+spray.jet1.T = 300.
 
-# Log-normal distribution of particle diameters
 # Mean particle diameter
-prob.part_mean_dia = 30E-6
-
-# Standard deviation of the particle diameter
-# prob.part_stdev_dia = 1.5E-6
-prob.part_stdev_dia = -1.0 # set to negative value to use Weibull distribution
-prob.part_weibull_k = 3.0
-
-# Jet properties
-prob.gas_jet_dia = 0.15e-3 
-prob.jet_dia = 0.15e-3 #spray diameter
-prob.jets_per_dir = 1
-prob.jet_start_time = 0.
-prob.jet_end_time = 1000.E+0
-prob.jet_vel = 9.9
-prob.jet_cent = 0.0  0.0  0.1e-3
-prob.mass_flow_rate = 0.12e-3 #kg/s
-
-# For new hollow cone spray implementation,
-# spread angle is now the more like the jet angle
-prob.spread_angle = 90.
-# The polar angle in degrees relative to the Z axis
-#prob.jet_angle = 45.
-# The spreading angle in degrees
-#prob.spread_angle = 0.
-# The bounds on the azimuthal angle in degrees
-# prob.jet_azi_lo = 0.
-# prob.jet_azi_hi = 360.
-#prob.jet_end_time = 0.00052
+spray.jet1.dist_type = Weibull
+spray.jet1.mean_dia = 30.E-6
+spray.jet1.k = 3.
+spray.jet1.jet_dia = 0.15E-3
+spray.jet1.spread_angle = 90.
+spray.jet1.hollow_spray = true
+spray.jet1.mass_flow_rate = 0.12E-3
+spray.jet1.jet_cent = 0. 0. 1.E-4
+spray.jet1.jet_norm = 0. 0. 1.
+spray.jet1.jet_vel = 9.9
 
 #--------------------SPRAY PARTICLE DATA-----------------------
 peleLM.do_spray_particles = 1
@@ -91,15 +72,15 @@ particles.cfl = 0.7
 particles.mom_transfer = 1
 particles.mass_transfer = 1
 particles.init_function = 1 # Sprays are initialized using SprayParticleInitInsert.cpp
-particles.write_spray_ascii_files = 0
+particles.write_ascii_files = 0
 particles.parcel_size = 5. # Number of particles per parcel
 particles.fuel_species = NXC7H16
 # Properties for liquid n-heptane
 particles.fuel_crit_temp = 540.3 # K (at Pc = 1.8170 MPa)
 particles.fuel_boil_temp = 370. # K (at atmospheric conditions)
 particles.fuel_ref_temp = 298.15
-particles.fuel_latent = 360600
-particles.fuel_cp = 2263 # Cp at 298
+particles.fuel_latent = 360600.
+particles.fuel_cp = 2263. # Cp at 298
 particles.fuel_rho = 683.75
 particles.use_splash_model = false
 particles.NXC7H16_psat = 4.02832 1268.636 -56.199 1.E5

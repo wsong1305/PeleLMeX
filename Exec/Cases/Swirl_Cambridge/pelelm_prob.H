@@ -67,8 +67,6 @@ pelelm_initdata (int i, int j, int k,
                  const amrex::Real Lx = prob_hi[0] - prob_lo[0];,
                  const amrex::Real Ly = prob_hi[1] - prob_lo[1]);
 
-    constexpr amrex::Real Pi = 3.14159265358979323846264338327950288;
-
     auto eos = pele::physics::PhysicsType::eos();
     amrex::GpuArray<amrex::Real, NUM_SPECIES + 4> pmf_vals = {0.0};
     amrex::Real pert = 0.0;
@@ -174,7 +172,6 @@ bcnormal(
 {
   const amrex::Real* prob_lo = geomdata.ProbLo();
   const amrex::Real* prob_hi = geomdata.ProbHi();
-  constexpr amrex::Real Pi = 3.14159265358979323846264338327950288;
 
   amrex::Real Do_swirler = prob_parm.Do_swirler;
   amrex::Real Di_swirler = prob_parm.Di_swirler;
@@ -230,11 +227,11 @@ bcnormal(
 
   // amrex::Real amp = 2;
 
-  // amrex::Real fluctuation = amp * ((std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[0] )* 1.5 / Ro_swirler))
-  //                           +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[1] )* 1.75 / Ro_swirler))
-  //                           +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[2] )* 0.79 / Ro_swirler))
-  //                           +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[3] )* 1.1 / Ro_swirler))
-  //                           +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[4] )* 0.95 / Ro_swirler)));
+  // amrex::Real fluctuation = amp * ((std::sin(2 * M_PI * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[0] )* 1.5 / Ro_swirler))
+  //                           +(std::sin(2 * M_PI * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[1] )* 1.75 / Ro_swirler))
+  //                           +(std::sin(2 * M_PI * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[2] )* 0.79 / Ro_swirler))
+  //                           +(std::sin(2 * M_PI * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[3] )* 1.1 / Ro_swirler))
+  //                           +(std::sin(2 * M_PI * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[4] )* 0.95 / Ro_swirler)));
 
 
 
@@ -250,7 +247,7 @@ bcnormal(
   // // amrex::Real vel_jet_y = (fluctuation) *( 1 - (0.5*(1+(std::tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))-(D_jet/2))/(H)))*(tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))+(D_jet/2))/(H))))));
   // // amrex::Real vel_jet_z = (0.8*prob_parm.U_b + fluctuation) *( 1 - (0.5*(1+(std::tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))-(D_jet/2))/(H)))*(tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))+(D_jet/2))/(H))))));
 
-  // amrex::Real jet_angle_radians = prob_parm.jet_angle*3.1415/180.;
+  // amrex::Real jet_angle_radians = prob_parm.jet_angle*M_PI/180.;
 
   // amrex::Real vel_jet_z = (fluctuation+sin(jet_angle_radians)*prob_parm.U_jet); //(fluctuation+sin(jet_angle_radians)*prob_parm.U_jet)*( 1 - (0.5*(1+(std::tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))-(D_jet/2))/(H)))*(tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))+(D_jet/2))/(H))))));
   // amrex::Real vel_jet_x = (fluctuation+cos(jet_angle_radians)*prob_parm.U_jet); //*( 1 - (0.5*(1+(std::tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))-(D_jet/2))/(H)))*(tanh((std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2))+(D_jet/2))/(H))))));
@@ -307,7 +304,7 @@ bcnormal(
 
   // ------ Swirl region ---------
   // if(r > prob_parm.Di_swirler and r < prob_parm.Do_swirler){
-    amrex::Real swirl_angle_radians = prob_parm.swirl_angle*3.1415/180.;
+    amrex::Real swirl_angle_radians = prob_parm.swirl_angle*M_PI/180.;
     vel_swirler_x = sin(swirl_angle_radians)*prob_parm.U_b;
     vel_swirler_y = sin(swirl_angle_radians)*prob_parm.U_b;
     vel_swirler_z = cos(swirl_angle_radians)*prob_parm.U_b;
