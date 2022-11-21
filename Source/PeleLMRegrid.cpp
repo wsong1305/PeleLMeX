@@ -60,10 +60,6 @@ void PeleLM::MakeNewLevelFromCoarse( int lev,
       if (m_has_divu) {
          fillcoarsepatch_divu(lev, time, n_leveldata_new->divu,0);
       }
-#ifdef PELE_USE_EFIELD
-      fillcoarsepatch_phiV(lev, time, n_leveldata_new->phiV,m_nGrowState);
-      fillcoarsepatch_nE(lev, time, n_leveldata_new->nE,m_nGrowState);
-#endif
    }
 
    // Move std::unique_ptr into the PeleLM vector
@@ -79,6 +75,12 @@ void PeleLM::MakeNewLevelFromCoarse( int lev,
    }
 
    if (!m_incompressible) {
+      // Enforce density / species density consistency
+      // only usefull when using cell cons interp
+      if (m_regrid_interp_method == 1) {
+         setRhoToSumRhoY(lev, AmrNewTime);
+      }
+
       // Initialize thermodynamic pressure
       setThermoPress(lev, AmrNewTime);
    }
@@ -89,7 +91,10 @@ void PeleLM::MakeNewLevelFromCoarse( int lev,
    m_resetCoveredMask = 1;
 
 #ifdef PELE_USE_EFIELD
-   m_leveldatanlsolve[lev].reset(new LevelDataNLSolve(ba, dm, *m_factory[lev], 1));
+   m_leveldatanlsolve[lev].reset(new LevelDataNLSolve(ba, dm, *m_factory[lev], m_nGrowState));
+   if (m_do_extraEFdiags) { 
+      m_ionsFluxes[lev].reset(new MultiFab(ba, dm, NUM_IONS*AMREX_SPACEDIM, 0));
+   }
    m_precond_op.reset();
 #endif
 
@@ -151,10 +156,6 @@ void PeleLM::RemakeLevel( int lev,
       if (m_has_divu) {
          fillpatch_divu(lev, time, n_leveldata_new->divu, 1);
       }
-#ifdef PELE_USE_EFIELD
-      fillpatch_phiV(lev, time, n_leveldata_new->phiV,m_nGrowState);
-      fillpatch_nE(lev, time, n_leveldata_new->nE,m_nGrowState);
-#endif
    }
 
    // Move std::unique_ptr into the PeleLM vector
@@ -180,7 +181,10 @@ void PeleLM::RemakeLevel( int lev,
    }
 
 #ifdef PELE_USE_EFIELD
-   m_leveldatanlsolve[lev].reset(new LevelDataNLSolve(ba, dm, *m_factory[lev], 1));
+   m_leveldatanlsolve[lev].reset(new LevelDataNLSolve(ba, dm, *m_factory[lev], m_nGrowState));
+   if (m_do_extraEFdiags) { 
+      m_ionsFluxes[lev].reset(new MultiFab(ba, dm, NUM_IONS*AMREX_SPACEDIM, 0));
+   }
    m_precond_op.reset();
 #endif
 
@@ -212,6 +216,9 @@ void PeleLM::ClearLevel(int lev) {
    macproj.reset();
 #ifdef PELE_USE_EFIELD
    m_leveldatanlsolve[lev].reset();
+   if (m_do_extraEFdiags) { 
+      m_ionsFluxes[lev].reset();
+   }
 #endif
    m_extSource[lev]->clear();
 }

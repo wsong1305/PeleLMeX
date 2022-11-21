@@ -1,6 +1,8 @@
 #include <PeleLM.H>
 #include <PeleLM_K.H>
 #include <PeleLMEF_Constants.H>
+#include <AMReX_FillPatchUtil.H>
+#include <PeleLMBCfill.H>
 
 using namespace amrex;
 
@@ -55,7 +57,7 @@ void PeleLM::ionDriftVelocity(std::unique_ptr<AdvanceAdvData> &advData)
       auto ldataNew_p = getLevelDataPtr(lev,AmrNewTime);
 
       MultiFab mobH_cc(grids[lev],dmap[lev],NUM_IONS,1);
-#ifdef _OPENMP
+#ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
       for (MFIter mfi(mobH_cc,TilingIfNotGPU()); mfi.isValid();++mfi)
@@ -77,7 +79,7 @@ void PeleLM::ionDriftVelocity(std::unique_ptr<AdvanceAdvData> &advData)
 
       // Assemble the ions drift velocity
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
-#ifdef _OPENMP
+#ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
          for (MFIter mfi(mobH_ec[idim],TilingIfNotGPU()); mfi.isValid();++mfi)
@@ -109,13 +111,56 @@ void PeleLM::ionDriftVelocity(std::unique_ptr<AdvanceAdvData> &advData)
                          refRatio(lev-1),geom[lev-1]);
 #endif
    }
+
+   // FillPatch Udrift on levels > 0 
+   for (int lev = 0; lev <= finest_level; ++lev) {
+       if (lev > 0) {
+           IntVect rr  = geom[lev].Domain().size() / geom[lev-1].Domain().size();
+           Interpolater* mapper = &face_linear_interp;
+
+           // Set BCRec for Umac
+           Vector<BCRec> bcrec(NUM_IONS);
+           for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
+                for (int ion = 0; ion < NUM_IONS; ion++) {
+                    if (geom[lev-1].isPeriodic(idim)) {
+                       bcrec[ion].setLo(idim,BCType::int_dir);
+                       bcrec[ion].setHi(idim,BCType::int_dir);
+                    } else {
+                       bcrec[ion].setLo(idim,BCType::foextrap);
+                       bcrec[ion].setHi(idim,BCType::foextrap);
+                    }
+                }
+           }
+           Array<Vector<BCRec>,AMREX_SPACEDIM> bcrecArr = {AMREX_D_DECL(bcrec,bcrec,bcrec)};
+
+           PhysBCFunct<GpuBndryFuncFab<umacFill>> crse_bndry_func(geom[lev-1], bcrec, umacFill{});
+           Array<PhysBCFunct<GpuBndryFuncFab<umacFill>>,AMREX_SPACEDIM> cbndyFuncArr = {AMREX_D_DECL(crse_bndry_func,crse_bndry_func,crse_bndry_func)};
+
+           PhysBCFunct<GpuBndryFuncFab<umacFill>> fine_bndry_func(geom[lev], bcrec, umacFill{});
+           Array<PhysBCFunct<GpuBndryFuncFab<umacFill>>,AMREX_SPACEDIM> fbndyFuncArr = {AMREX_D_DECL(fine_bndry_func,fine_bndry_func,fine_bndry_func)};
+
+           Real dummy = 0.;
+           FillPatchTwoLevels(GetArrOfPtrs(advData->uDrift[lev]), IntVect(1), dummy,
+                  {GetArrOfPtrs(advData->uDrift[lev-1])}, {dummy},
+                  {GetArrOfPtrs(advData->uDrift[lev])}, {dummy},
+                  0, 0, NUM_IONS,
+                  geom[lev-1], geom[lev-1],
+                  cbndyFuncArr, 0, fbndyFuncArr, 0,
+                  rr, mapper, bcrecArr, 0);
+        } else {
+           AMREX_D_TERM(advData->uDrift[lev][0].FillBoundary(geom[lev].periodicity());,
+                        advData->uDrift[lev][1].FillBoundary(geom[lev].periodicity());,
+                        advData->uDrift[lev][2].FillBoundary(geom[lev].periodicity()));
+        }
+    }
+
 }
 
 void PeleLM::ionDriftAddUmac(int lev, std::unique_ptr<AdvanceAdvData> &advData)
 {
    // Add umac to the ions drift velocity to get the effective velocity
    for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
-#ifdef _OPENMP
+#ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
       for (MFIter mfi(advData->umac[lev][idim],TilingIfNotGPU()); mfi.isValid();++mfi)
@@ -129,5 +174,6 @@ void PeleLM::ionDriftAddUmac(int lev, std::unique_ptr<AdvanceAdvData> &advData)
             Ud_Sp(i,j,k,n) += umac(i,j,k);
          });
       }
+      advData->uDrift[lev][idim].FillBoundary(geom[lev].periodicity());
    }
 }
