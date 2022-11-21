@@ -1,6 +1,6 @@
 
 #include "SprayParticles.H"
-#include "SprayInjectTemplate.H"
+#include "SprayInjection.H"
 #include "pelelm_prob.H"
 
 bool
