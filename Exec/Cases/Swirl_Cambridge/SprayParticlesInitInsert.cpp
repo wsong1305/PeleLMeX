@@ -27,7 +27,8 @@ SprayParticleContainer::injectParticles(
 }
 
 void
-SprayParticleContainer::InitSprayParticles(ProbParm const& prob_parm)
+SprayParticleContainer::InitSprayParticles(
+  const bool init_parts, ProbParm const& prob_parm)
 {
   amrex::ignore_unused(prob_parm);
   m_sprayJets.resize(1);
