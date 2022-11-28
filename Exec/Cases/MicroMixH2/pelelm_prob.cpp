@@ -105,6 +105,10 @@ void PeleLM::readProbParm()
    pp.query("d_venturi", PeleLM::prob_parm->d_venturi);
    pp.query("d_swirlerexit", PeleLM::prob_parm->d_swirlerexit);
    pp.query("d_dump", PeleLM::prob_parm->d_dump);
+   pp.query("d_air", PeleLM::prob_parm->d_air);
+   pp.query("d_fuel", PeleLM::prob_parm->d_fuel);
+   pp.query("th_fuel", PeleLM::prob_parm->th_fuel);
+   pp.query("h_init", PeleLM::prob_parm->h_init);
 
    pp.query("l_venturi", PeleLM::prob_parm->l_venturi);
    pp.query("l_swirlercup", PeleLM::prob_parm->l_swirlercup);
@@ -114,6 +118,8 @@ void PeleLM::readProbParm()
    pp.query("P_mean", PeleLM::prob_parm->P_mean);
    pp.query("T_mean", PeleLM::prob_parm->T_mean);
    pp.query("H2fuel", PeleLM::prob_parm->H2fuel);
+   pp.query("v_fuel", PeleLM::prob_parm->v_fuel);
+   pp.query("v_coflow", PeleLM::prob_parm->v_coflow);
 
    pp.query("axial_v_scale", PeleLM::prob_parm->axial_vel_scale);
    pp.query("tan_v_scale", PeleLM::prob_parm->tan_vel_scale);

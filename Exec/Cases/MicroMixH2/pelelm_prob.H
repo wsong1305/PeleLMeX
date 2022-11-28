@@ -54,19 +54,21 @@ void pelelm_initdata(int i, int j, int k,
 
     amrex::Real rad = std::sqrt(x[0]*x[0] + x[1]*x[1]);
 
-    if ( rad < 0.0005 && x[2] < 0.0018 ) {
-        for (int n = 0; n < NUM_SPECIES; n++) {
+   if ( rad < (prob_parm.d_fuel/2.0-prob_parm.th_fuel) && x[2] < prob_parm.h_init ) {
+   //if ( rad < prob_parm.d_fuel/2.0-prob_parm.th_fuel/2 ) {  
+      for (int n = 0; n < NUM_SPECIES; n++) {
             massfrac[n] = massfrac_fuel[n];
         }
+	state(i,j,k,VELZ) = prob_parm.v_fuel;
     } else {
         for (int n = 0; n < NUM_SPECIES; n++) {
             massfrac[n] = massfrac_air[n];
         }
+	state(i,j,k,VELZ) = prob_parm.v_coflow;
     }
 
     state(i,j,k,VELX) = 0.0;
     state(i,j,k,VELY) = 0.0;
-    state(i,j,k,VELZ) = 0.0;
 
     amrex::Real P_cgs = prob_parm.P_mean*10;
 
@@ -116,8 +118,9 @@ bcnormal(
   amrex::Real rad = std::sqrt(x[0]*x[0] + x[1]*x[1]);
   amrex::Real rho_cgs = 0.0;
   amrex::Real RhoH_temp = 0.0;
+  amrex::Real int_rad = prob_parm.d_fuel/2.0 - prob_parm.th_fuel;
 
-  if ( rad < 0.0005 ) {
+  if ( rad < int_rad ) {
       s_ext[TEMP] = prob_parm.T_mean;
       eos.PYT2R(p_cgs, massfrac_fuel, s_ext[TEMP], rho_cgs);
       s_ext[DENSITY] = rho_cgs * 1.0e3;
@@ -128,7 +131,7 @@ bcnormal(
       }
       s_ext[VELX] = 0.0;
       s_ext[VELY] = 0.0;
-      s_ext[VELZ] = 8.0 * ( 1.0 - (rad / 0.0004)*(rad / 0.0004));
+      s_ext[VELZ] = prob_parm.v_fuel * ( 1.0 - (rad / int_rad)*(rad / int_rad));
   } else {
       s_ext[TEMP] = prob_parm.T_mean;
       eos.PYT2R(p_cgs, massfrac_air, s_ext[TEMP], rho_cgs);
@@ -140,7 +143,7 @@ bcnormal(
       }
       s_ext[VELX] = 0.0;
       s_ext[VELY] = 0.0;
-      s_ext[VELZ] = 1.0;
+      s_ext[VELZ] = prob_parm.v_coflow;
   }
 
 }

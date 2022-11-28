@@ -29,6 +29,9 @@ amr.max_grid_size   = 64               # max box size
 prob.P_mean = 101325.0
 prob.T_mean = 300.0
 prob.H2fuel = 1.0
+prob.d_air = 0.005
+prob.d_fuel = 0.001
+prob.th_fuel = 0.0002
 
 #-------------------------PeleLM CONTROL----------------------------
 peleLM.v = 3
@@ -71,6 +74,9 @@ eb2.geom_type = UserDefined
 eb2.small_volfrac = 5.e-5
 eb2.maxiter = 500
 eb2.num_coarsen_opt=2
+eb2.d_air = 0.005;
+eb2.d_fuel = 0.001;
+eb2.th_fuel = 0.0002;
 peleLM.refine_EB_type = Static
 peleLM.refine_EB_max_level = 1
 peleLM.refine_EB_buffer = 2.0

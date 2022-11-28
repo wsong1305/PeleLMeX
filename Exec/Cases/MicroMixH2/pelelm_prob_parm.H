@@ -12,6 +12,10 @@ struct ProbParm
    amrex::Real d_venturi 		= 0.013;
    amrex::Real d_swirlerexit 	= 0.02032;
    amrex::Real d_dump 			= 0.076;
+   amrex::Real d_air = 0.005;
+   amrex::Real d_fuel = 0.001;
+   amrex::Real th_fuel = 0.0002;
+   amrex::Real h_init = 0.0018;
 
    amrex::Real l_venturi = 0.0008382;
    amrex::Real l_swirlercup = 0.0043688;
@@ -22,6 +26,10 @@ struct ProbParm
    amrex::Real rad_vel_scale = 15.0;
 
    // Chamber conditions
+   amrex::Real v_fuel = 10.0;
+   amrex::Real v_coflow = 1.0;
+   //
+
    amrex::Real P_mean        = 101325.0;
    amrex::Real T_mean        = 300.0;
    amrex::Real H2fuel        = 0.0;
