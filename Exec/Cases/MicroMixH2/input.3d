@@ -12,14 +12,12 @@ peleLM.hi_bc = Interior Interior Outflow
 
 
 #-------------------------AMR CONTROL----------------------------
-amr.n_cell          = 64 64 128     # Level 0 number of cells in each direction   
-amr.n_cell          = 128 128 256     # Level 0 number of cells in each direction   
-#amr.n_cell          = 256 256 512     # Level 0 number of cells in each direction   
-#amr.n_cell          = 256 128 128      # Level 0 number of cells in each direction   
+amr.n_cell          = 32 32 64     # Level 0 number of cells in each direction   
+#amr.n_cell          = 128 128 256     # Level 0 number of cells in each direction   
 amr.v               = 1                # AMR verbose
-amr.max_level       = 3                # maximum level number allowed
+amr.max_level       = 2                # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 2        # refinement ratio
-amr.regrid_int      = 5                # how often to regrid
+amr.regrid_int      = 1                # how often to regrid
 amr.n_error_buf     = 2 2 2 2          # number of buffer cells in error est
 amr.grid_eff        = 0.95             # what constitutes an efficient grid
 amr.blocking_factor = 16               # block factor in grid generation (min box size)~ 16 is better
@@ -32,6 +30,7 @@ prob.H2fuel = 1.0
 prob.d_air = 0.005
 prob.d_fuel = 0.001
 prob.th_fuel = 0.0002
+prob.h_init = 0.0025
 
 #-------------------------PeleLM CONTROL----------------------------
 peleLM.v = 3
@@ -52,10 +51,9 @@ peleLM.do_mass_balance = 1
 #amr.restart = chk00210
 amr.check_int = 10
 amr.plot_int = 10
-amr.max_step = 20
+amr.max_step = 200
 amr.dt_shrink = 0.1
 amr.stop_time = 1.0
-#amr.stop_time = 1.00
 amr.init_dt = 0.00000001
 amr.cfl = 0.5
 amr.derive_plot_vars = avg_pressure mag_vort mass_fractions
@@ -74,11 +72,12 @@ eb2.geom_type = UserDefined
 eb2.small_volfrac = 5.e-5
 eb2.maxiter = 500
 eb2.num_coarsen_opt=2
-eb2.d_air = 0.005;
-eb2.d_fuel = 0.001;
-eb2.th_fuel = 0.0002;
+eb2.d_air = 0.005
+eb2.d_fuel = 0.001
+eb2.th_fuel = 0.0002
+eb2.th_inlet = 0.002
 peleLM.refine_EB_type = Static
-peleLM.refine_EB_max_level = 1
+peleLM.refine_EB_max_level = 3
 peleLM.refine_EB_buffer = 2.0
 
 #--------------------REFINEMENT CONTROL------------------------
