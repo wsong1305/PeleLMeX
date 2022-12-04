@@ -73,18 +73,26 @@ phiV_bc[] =
 };
 #endif
 
+#ifdef PELELM_USE_SOOT
+int
+soot_bc[] =
+{
+  INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN, EXT_DIR, EXT_DIR
+};
+#endif
+
 InterpBase* PeleLM::getInterpolator() {
 //
 // Get EB-aware interpolater when needed
 //
-#ifdef AMREX_USE_EB  
+#ifdef AMREX_USE_EB
   return (EBFactory(0).isAllRegular()) ? &mf_cell_cons_interp
 	  			       : &eb_mf_cell_cons_interp;
 #else
   return &mf_cell_cons_interp;
 #endif
 }
- 
+
 void PeleLM::setBoundaryConditions() {
 
    // Initialize the BCRecs
@@ -108,7 +116,7 @@ void PeleLM::setBoundaryConditions() {
             m_bcrec_state[VELX+idim].setHi(idim2,tang_vel_bc[hi_bc[idim2]]);
          }
       }
-   }  
+   }
 
    // General forces: use int_dir in interior and foextrap otherwise
    for (int i = 0; i < sizeForceBC; i++) {
@@ -187,6 +195,14 @@ void PeleLM::setBoundaryConditions() {
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
          auto const bcnESave = m_bcrec_state[NE];
          m_bcrec_state[NE] = hackBCChargedParticle(-1.0, bcnESave);
+      }
+#endif
+#ifdef PELELM_USE_SOOT
+      for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
+        for (int mom = 0; mom < NUMSOOTVAR; mom++) {
+          m_bcrec_state[FIRSTSOOT+mom].setLo(idim,soot_bc[lo_bc[idim]]);
+          m_bcrec_state[FIRSTSOOT+mom].setHi(idim,soot_bc[hi_bc[idim]]);
+        }
       }
 #endif
    }
@@ -371,7 +387,7 @@ void PeleLM::fillpatch_density(int lev,
       auto* mapper = getInterpolator();
 
       // Density
-      PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirDens>> crse_bndry_func_rho(geom[lev-1], fetchBCRecArray(DENSITY,1), 
+      PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirDens>> crse_bndry_func_rho(geom[lev-1], fetchBCRecArray(DENSITY,1),
                                                                                PeleLMCCFillExtDirDens{lprobparm, lpmfdata, m_nAux});
       PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirDens>> fine_bndry_func_rho(geom[lev], fetchBCRecArray(DENSITY,1),
                                                                                PeleLMCCFillExtDirDens{lprobparm, lpmfdata, m_nAux});
@@ -543,7 +559,7 @@ void PeleLM::fillpatch_nE(int lev,
       auto* mapper = getInterpolator();
 
       // nE
-      PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirnE>> crse_bndry_func(geom[lev-1], fetchBCRecArray(NE,1), 
+      PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirnE>> crse_bndry_func(geom[lev-1], fetchBCRecArray(NE,1),
                                                                          PeleLMCCFillExtDirnE{lprobparm, lpmfdata, m_nAux});
       PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirnE>> fine_bndry_func(geom[lev], fetchBCRecArray(NE,1),
                                                                          PeleLMCCFillExtDirnE{lprobparm, lpmfdata, m_nAux});
@@ -581,7 +597,7 @@ void PeleLM::fillpatch_phiV(int lev,
       auto* mapper = getInterpolator();
 
       // Density
-      PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirPhiV>> crse_bndry_func(geom[lev-1], fetchBCRecArray(PHIV,1), 
+      PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirPhiV>> crse_bndry_func(geom[lev-1], fetchBCRecArray(PHIV,1),
                                                                            PeleLMCCFillExtDirPhiV{lprobparm, lpmfdata, m_nAux});
       PhysBCFunct<GpuBndryFuncFab<PeleLMCCFillExtDirPhiV>> fine_bndry_func(geom[lev], fetchBCRecArray(PHIV,1),
                                                                            PeleLMCCFillExtDirPhiV{lprobparm, lpmfdata, m_nAux});
@@ -803,7 +819,7 @@ void PeleLM::setInflowBoundaryVel(MultiFab &a_vel,
                                  int lev,
                                  TimeStamp a_time) {
    BL_PROFILE_VAR("PeleLM::setInflowBoundaryVel()", setInflowBoundaryVel);
-   
+
    Real time = getTime(lev, a_time);
 
    // Create a dummy BCRec from Velocity BCRec keeping only Inflow and set the other to bogus
@@ -822,7 +838,7 @@ void PeleLM::setInflowBoundaryVel(MultiFab &a_vel,
             dummyVelBCRec[idim].setHi(idim2,BCType::bogus);
          }
       }
-   }  
+   }
 
    fillTurbInflow(a_vel, 0, lev, time);
 

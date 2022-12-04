@@ -40,6 +40,12 @@ void PeleLM::Advance(int is_initIter) {
    // TIME
    // Compute time-step size
    m_dt = computeDt(is_initIter,AmrOldTime);
+#ifdef PELELM_USE_SPRAY
+   if (!is_initIter && do_spray_particles) {
+     // Create the state MF used for spray interpolation
+     setSprayState(m_dt);
+   }
+#endif
 
    // Update time vectors
    for(int lev = 0; lev <= finest_level; lev++)
@@ -62,6 +68,10 @@ void PeleLM::Advance(int is_initIter) {
    std::unique_ptr<AdvanceAdvData> advData;
    advData.reset(new AdvanceAdvData(finest_level, grids, dmap, m_factory, m_incompressible,
                                     m_nGrowAdv, m_nGrowMAC));
+
+   for (int lev = 0; lev <= finest_level; lev++) {
+     m_extSource[lev]->setVal(0.);
+   }
    //----------------------------------------------------------------
 
    //----------------------------------------------------------------
@@ -96,6 +106,16 @@ void PeleLM::Advance(int is_initIter) {
    BL_PROFILE_VAR_STOP(PLM_SETUP);
    //----------------------------------------------------------------
 
+#ifdef PELELM_USE_SPRAY
+   if (!is_initIter) {
+     sprayMKD(m_cur_time, m_dt);
+   }
+#endif
+#ifdef PELELM_USE_SOOT
+   if (do_soot_solve) {
+     computeSootSource(AmrOldTime, m_dt);
+   }
+#endif
 
    if (! m_incompressible ) {
       floorSpecies(AmrOldTime);
@@ -161,6 +181,12 @@ void PeleLM::Advance(int is_initIter) {
       averageDownnE(AmrNewTime);
 #endif
       fillPatchState(AmrNewTime);
+
+#ifdef PELELM_USE_SOOT
+      if (do_soot_solve) {
+         clipSootMoments();
+      }
+#endif
       if (m_has_divu) {
          int is_initialization = 0;             // Not here
          int computeDiffusionTerm = 1;          // Yes, re-evaluate the diffusion term after the last chemistry solve
@@ -245,11 +271,11 @@ void PeleLM::oneSDC(int sdcIter,
       averageDownnE(AmrNewTime);
 #endif
       fillPatchState(AmrNewTime);
-      
+
       calcDiffusivity(AmrNewTime);
       computeDifferentialDiffusionTerms(AmrNewTime,diffData);
       if (m_has_divu) {
-         int is_initialization = 0;                   // Not here 
+         int is_initialization = 0;                   // Not here
          int computeDiffusionTerm = 0;                // Nope, we just did that
          int do_avgDown = 1;                          // Always
          calcDivU(is_initialization,computeDiffusionTerm,do_avgDown,AmrNewTime,diffData);
@@ -301,6 +327,10 @@ void PeleLM::oneSDC(int sdcIter,
    if (m_verbose > 1) {
       ScalAdvStart = ParallelDescriptor::second();
    }
+#ifdef PELELM_USE_SOOT
+   // Compute and update passive advective terms
+   computePassiveAdvTerms(advData, FIRSTSOOT, NUMSOOTVAR);
+#endif
    // Get scalar advection SDC forcing
    getScalarAdvForce(advData,diffData);
 

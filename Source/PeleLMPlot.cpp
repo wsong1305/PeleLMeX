@@ -10,6 +10,12 @@
 #include <AMReX_EBInterpolater.H>
 #endif
 
+#ifdef PELELM_USE_SPRAY
+#include "SprayParticles.H"
+#endif
+#ifdef PELELM_USE_SOOT
+#include "SootModel.H"
+#endif
 using namespace amrex;
 
 namespace { const std::string level_prefix{"Level_"}; }
@@ -36,7 +42,7 @@ void PeleLM::WriteDebugPlotFile(const Vector<const MultiFab*> &a_MF,
 void PeleLM::WritePlotFile() {
    BL_PROFILE("PeleLM::WritePlotFile()");
 
-   const std::string& plotfilename = amrex::Concatenate(m_plot_file, m_nstep);
+   const std::string& plotfilename = amrex::Concatenate(m_plot_file, m_nstep, m_ioDigits);
 
    if (m_verbose) {
       amrex::Print() << " Dumping plotfile: " << plotfilename << "\n";
@@ -52,7 +58,11 @@ void PeleLM::WritePlotFile() {
       ncomp = 2*AMREX_SPACEDIM;
    } else {
       // State + pressure gradients
-      ncomp = NVAR + AMREX_SPACEDIM;
+      if (m_plot_grad_p) {
+         ncomp = NVAR + AMREX_SPACEDIM;
+      } else {
+         ncomp = NVAR;
+      }
       // Make the plot lighter by dropping species by default
       if (!m_plotStateSpec) ncomp -= NUM_SPECIES;
       if (m_has_divu) {
@@ -61,7 +71,7 @@ void PeleLM::WritePlotFile() {
    }
 
    // Reactions
-   if (m_do_react && !m_skipInstantRR) {
+   if (m_do_react && !m_skipInstantRR && m_plot_react) {
       // Cons Rate
       ncomp += nCompIR();
       // FunctCall
@@ -83,6 +93,11 @@ void PeleLM::WritePlotFile() {
       deriveEntryCount += rec->numDerive();
    }
    ncomp += deriveEntryCount;
+#ifdef PELELM_USE_SPRAY
+   if (do_spray_particles) {
+     ncomp += spray_derive_vars.size();
+   }
+#endif
 
    //----------------------------------------------------------------
    // Plot MultiFabs
@@ -118,20 +133,28 @@ void PeleLM::WritePlotFile() {
       plt_VarsName.push_back("nE");
       plt_VarsName.push_back("phiV");
 #endif
+#ifdef PELELM_USE_SOOT
+      for (int mom = 0; mom < NUMSOOTVAR; mom++) {
+        std::string sootname = soot_model->sootVariableName(mom);
+        plt_VarsName.push_back(sootname);
+      }
+#endif
       if (m_has_divu) {
          plt_VarsName.push_back("divu");
       }
    }
 
-   plt_VarsName.push_back("gradp_x");
+   if (m_plot_grad_p) {
+      plt_VarsName.push_back("gradpx");
 #if ( AMREX_SPACEDIM > 1 )
-   plt_VarsName.push_back("gradp_y");
+      plt_VarsName.push_back("gradpy");
 #if ( AMREX_SPACEDIM > 2 )
-   plt_VarsName.push_back("gradp_z");
+      plt_VarsName.push_back("gradpz");
 #endif
 #endif
+   }
 
-   if (m_do_react  && !m_skipInstantRR) {
+   if (m_do_react  && !m_skipInstantRR && m_plot_react) {
       for (int n = 0; n < NUM_SPECIES; n++) {
          plt_VarsName.push_back("I_R("+names[n]+")");
       }
@@ -154,6 +177,15 @@ void PeleLM::WritePlotFile() {
          plt_VarsName.push_back(rec->variableName(dvar));
       }
    }
+#ifdef PELELM_USE_SPRAY
+   if (spray_derive_vars.size() > 0) {
+     // We need virtual particles for the lower levels
+     setupVirtualParticles(0);
+     for (int ivar = 0; ivar < spray_derive_vars.size(); ivar++) {
+       plt_VarsName.push_back(spray_derive_vars[ivar]);
+     }
+   }
+#endif
 
    //----------------------------------------------------------------
    // Fill the plot MultiFabs
@@ -179,15 +211,21 @@ void PeleLM::WritePlotFile() {
          MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->phiV, 0, cnt, 1, 0);
          cnt += 1;
 #endif
+#ifdef PELELM_USE_SOOT
+         MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->state, FIRSTSOOT, cnt, NUMSOOTVAR, 0);
+         cnt += NUMSOOTVAR;
+#endif
          if (m_has_divu) {
             MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->divu, 0, cnt, 1, 0);
             cnt += 1;
          }
       }
-      MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->gp, 0, cnt,AMREX_SPACEDIM,0);
-      cnt += AMREX_SPACEDIM;
+      if (m_plot_grad_p) {
+         MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->gp, 0, cnt,AMREX_SPACEDIM,0);
+         cnt += AMREX_SPACEDIM;
+      }
 
-      if (m_do_react  && !m_skipInstantRR) {
+      if (m_do_react  && !m_skipInstantRR && m_plot_react) {
          MultiFab::Copy(mf_plt[lev], m_leveldatareact[lev]->I_R, 0, cnt, nCompIR(), 0);
          cnt += nCompIR();
 
@@ -214,6 +252,22 @@ void PeleLM::WritePlotFile() {
          MultiFab::Copy(mf_plt[lev], *mf, 0, cnt, mf->nComp(), 0);
          cnt += mf->nComp();
       }
+#ifdef PELELM_USE_SPRAY
+      if (spray_derive_vars.size() > 0) {
+        int num_spray_derive = spray_derive_vars.size();
+        mf_plt[lev].setVal(0., cnt, num_spray_derive);
+        theSprayPC()->computeDerivedVars(
+          mf_plt[lev], lev, cnt, spray_derive_vars, spray_fuel_names);
+        if (lev < finest_level) {
+          MultiFab tmp_plt(grids[lev], dmap[lev], num_spray_derive, 0, MFInfo(), Factory(lev));
+          tmp_plt.setVal(0.);
+          theVirtPC()->computeDerivedVars(
+            tmp_plt, lev, 0, spray_derive_vars, spray_fuel_names);
+          MultiFab::Add(mf_plt[lev], tmp_plt, 0, cnt, num_spray_derive, 0);
+        }
+        cnt += num_spray_derive;
+      }
+#endif
 #ifdef AMREX_USE_EB
       EB_set_covered(mf_plt[lev],0.0);
 #endif
@@ -226,6 +280,17 @@ void PeleLM::WritePlotFile() {
    amrex::WriteMultiLevelPlotfile(plotfilename, finest_level + 1, GetVecOfConstPtrs(mf_plt),
                                   plt_VarsName, Geom(), m_cur_time, istep, refRatio());
 
+#ifdef PELELM_USE_SPRAY
+   if (theSprayPC() != nullptr && do_spray_particles) {
+     bool is_spraycheck = false;
+     for (int lev = 0; lev <= finest_level; ++lev) {
+       theSprayPC()->SprayParticleIO(
+         lev, is_spraycheck, write_spray_ascii_files, plotfilename, spray_fuel_names);
+       // Remove virtual particles that were made for derived variables
+       removeVirtualParticles(lev);
+     }
+   }
+#endif
 }
 
 void PeleLM::WriteHeader(const std::string& name, bool is_checkpoint) const
@@ -288,36 +353,36 @@ void PeleLM::WriteHeader(const std::string& name, bool is_checkpoint) const
 void PeleLM::WriteCheckPointFile()
 {
    BL_PROFILE("PeleLM::WriteCheckPointFile()");
-   
-   const std::string& checkpointname = amrex::Concatenate(m_check_file, m_nstep);
-   
+
+   const std::string& checkpointname = amrex::Concatenate(m_check_file, m_nstep, m_ioDigits);
+
    if (m_verbose) {
       amrex::Print() << "\n Writting checkpoint file: " << checkpointname << "\n";
    }
-   
+
    amrex::PreBuildDirectorHierarchy(checkpointname, level_prefix, finest_level + 1, true);
 
    bool is_checkpoint = true;
    WriteHeader(checkpointname, is_checkpoint);
    WriteJobInfo(checkpointname);
-   
+
    for(int lev = 0; lev <= finest_level; ++lev)
-   {   
+   {
       VisMF::Write(m_leveldata_new[lev]->state,
                    amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "state"));
-   
+
       VisMF::Write(m_leveldata_new[lev]->gp,
                    amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "gradp"));
-   
+
       VisMF::Write(m_leveldata_new[lev]->press,
                    amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "p"));
-   
+
       if (!m_incompressible) {
          if (m_has_divu) {
             VisMF::Write(m_leveldata_new[lev]->divu,
                          amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "divU"));
          }
-   
+
          if (m_do_react) {
             VisMF::Write(m_leveldatareact[lev]->I_R,
                          amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "I_R"));
@@ -330,8 +395,18 @@ void PeleLM::WriteCheckPointFile()
          VisMF::Write(m_leveldata_new[lev]->nE,
                       amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "nE"));
 #endif
-      }    
-   }   
+      }
+   }
+#ifdef PELELM_USE_SPRAY
+   if (theSprayPC() != nullptr && do_spray_particles) {
+     int write_ascii = 0; // Not for checkpoints
+     bool is_spraycheck = true;
+     for (int lev = 0; lev <= finest_level; ++lev) {
+       theSprayPC()->SprayParticleIO(
+         lev, is_spraycheck, write_ascii, checkpointname, spray_fuel_names);
+     }
+   }
+#endif
 }
 
 void PeleLM::ReadCheckPointFile()
@@ -356,12 +431,12 @@ void PeleLM::ReadCheckPointFile()
    Vector<char> fileCharPtr;
    ParallelDescriptor::ReadAndBcastFile(File, fileCharPtr);
    std::string fileCharPtrString(fileCharPtr.dataPtr());
-   std::istringstream is(fileCharPtrString, std::istringstream::in);   
+   std::istringstream is(fileCharPtrString, std::istringstream::in);
 
    std::string line, word;
 
-   // Start reading from checkpoint file 
-   
+   // Start reading from checkpoint file
+
    // Title line
    std::getline(is, line);
 
@@ -622,7 +697,7 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
                 sumYs += massfrac[n];
              }
           }
-          massfrac[N2_ID] = 1.0 - sumYs; 
+          massfrac[N2_ID] = 1.0 - sumYs;
 
           // Get density
           Real P_cgs = lprobparm->P_mean * 10.0;
@@ -634,7 +709,7 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
           Real h_cgs = 0.0;
           eos.TY2H(temp_arr(i,j,k), massfrac, h_cgs);
           rhoH_arr(i,j,k) = h_cgs * 1.0e-4 * rho_arr(i,j,k);
-            
+
           // Fill rhoYs
           for (int n = 0; n < NUM_SPECIES; n++){
              rhoY_arr(i,j,k,n) = massfrac[n] * rho_arr(i,j,k);
@@ -726,7 +801,7 @@ void PeleLM::WriteJobInfo(const std::string& path) const
           jobInfoFile << "   maximum zones   = ";
           for(int idim = 0; idim < AMREX_SPACEDIM; idim++)
           {
-              jobInfoFile << geom[lev].Domain().length(idim) << " "; 
+              jobInfoFile << geom[lev].Domain().length(idim) << " ";
           }
           jobInfoFile << "\n\n";
       }
