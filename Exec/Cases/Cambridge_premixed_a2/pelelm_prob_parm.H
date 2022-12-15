@@ -34,6 +34,7 @@ struct ProbParm
     amrex::Real dt_phi_change = 0.0; // time interval to equiv ratio to target
 
     bool ignition = false;
+    amrex::GpuArray<amrex::Real, 3> ign_region = {{0.0}};
 
     amrex::Real swirl_angle = 0.0;
 

@@ -8,16 +8,8 @@ void PeleLM::readProbParm()
    pp.query("P_mean"       ,  PeleLM::prob_parm->P_mean);
    pp.query("Zst"          ,  PeleLM::prob_parm->Zst);
    pp.query("T_in"         ,  PeleLM::prob_parm->T_in);
-   pp.query("Tb_init"      ,  PeleLM::prob_parm->Tb_init);
    pp.query("U_b"          ,  PeleLM::prob_parm->U_b);
-   pp.query("standoff"     ,  PeleLM::prob_parm->standoff);
-   pp.query("pertmag"      ,  PeleLM::prob_parm->pertmag);
-   pp.query("vel_fluct"    ,  PeleLM::prob_parm->vel_fluct);
-   pp.query("Do_swirler"   ,  PeleLM::prob_parm->Do_swirler);
-   pp.query("Di_swirler"   ,  PeleLM::prob_parm->Di_swirler);
-   pp.query("D_jet"        ,  PeleLM::prob_parm->D_jet);
-   pp.query("U_jet"        ,  PeleLM::prob_parm->U_jet);
-   pp.query("jet_angle"    ,  PeleLM::prob_parm->jet_angle);
+
    amrex::Real phi_in;
    pp.query("phi_in"       ,  phi_in);
    pp.query("phi_target"   ,  PeleLM::prob_parm->phi_target);
@@ -26,10 +18,12 @@ void PeleLM::readProbParm()
 
    pp.query("ignition"      ,  PeleLM::prob_parm->ignition);
 
-   pp.query("jet_radius",PeleLM::prob_parm->jet_radius);
-   pp.query("jet_loc_x" ,PeleLM::prob_parm->jet_loc_x);
-   pp.query("jet_loc_y" ,PeleLM::prob_parm->jet_loc_y);
-   pp.query("jet_loc_z" ,PeleLM::prob_parm->jet_loc_z);
+   std::vector<amrex::Real> region(AMREX_SPACEDIM);
+   pp.getarr("ign_region", region);
+
+  for (int idir = 0; idir < AMREX_SPACEDIM; idir++)
+    PeleLM::prob_parm->ign_region[idir] = region[idir];
+
 
    PeleLM::prob_parm->phi_in = phi_in;
 
@@ -50,13 +44,19 @@ void PeleLM::readProbParm()
    amrex::Real a = 16.5;
    
 
-   Xt[O2_ID] = 1.0 / ( 1.0 + phi_in / a + 0.79 / 0.21 );
-   Xt[POSF10325_ID] = phi_in * Xt[O2_ID] / a;
-   Xt[N2_ID] = 1.0 - Xt[O2_ID] - Xt[POSF10325_ID];
+   // Xt[O2_ID] = 1.0 / ( 1.0 + phi_in / a + 0.79 / 0.21 );
+   // Xt[POSF10325_ID] = phi_in * Xt[O2_ID] / a;
+   // Xt[N2_ID] = 1.0 - Xt[O2_ID] - Xt[POSF10325_ID];
+
+   Xt[O2_ID] = 0.21;
+   Xt[N2_ID] = 0.79;
 
    eos.X2Y(Xt,massfrac);
 
 
   for (int n = 0; n < NUM_SPECIES; n++)
     (PeleLM::prob_parm->Ys)[n] = massfrac[n];
+
+  PeleLM::pmf_data.initialize();
+
 }

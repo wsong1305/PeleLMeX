@@ -3,7 +3,6 @@
 
 #include <AMReX_Geometry.H>
 #include <AMReX_FArrayBox.H>
-#include <AMReX_ParmParse.H>
 #include <AMReX_SPACE.H>
 
 #include <PeleLM_Index.H>
@@ -25,12 +24,13 @@ set_Y_from_Phi(ProbParm const& prob_parm,
    //if ( prob_parm.fuelID == NC7H16_ID ) {
    //   a = 11.0;
    //}
-   a = 16.5;
+   a = 16.0;
    Xt[prob_parm.oxidID] = 1.0 / ( 1.0 + phi_in / a + 0.79 / 0.21 );
    Xt[prob_parm.fuelID] = phi_in * Xt[prob_parm.oxidID] / a;
    Xt[prob_parm.bathID] = 1.0 - Xt[prob_parm.oxidID] - Xt[prob_parm.fuelID];
 
    eos.X2Y(Xt,Y);
+
 }
 
 AMREX_GPU_DEVICE
@@ -176,24 +176,7 @@ bcnormal(
   const amrex::Real* prob_lo = geomdata.ProbLo();
   const amrex::Real* prob_hi = geomdata.ProbHi();
   constexpr amrex::Real Pi = 3.14159265358979323846264338327950288;
-
-  amrex::Real Do_swirler = prob_parm.Do_swirler;
-  amrex::Real Di_swirler = prob_parm.Di_swirler;
-  amrex::Real Ro_swirler = Do_swirler/2;
-  amrex::Real Ri_swirler = Di_swirler/2;
-  amrex::Real R = Ri_swirler/Ro_swirler;
-  amrex::Real x0 = 0.0;
-  amrex::Real y0 = 0.0;
-  amrex::Real H = 0.00001;
-  amrex::Real D_coflow = Do_swirler;
-  amrex::Real Ro_coflow = prob_hi[0] ;
-  amrex::Real Ri_coflow = Ro_swirler;
-  amrex::Real c1 = -0.0067;
-  amrex::Real c2 = 3.39e-7;
-  amrex::Real c3 = -21.081;
-  amrex::Real A = 0.0096;
-  amrex::Real B = -3.869e-11;
-  amrex::Real F_theta = -7.1884e5;
+  amrex::GpuArray<amrex::Real, NUM_SPECIES+4> vel_from_file = {0.0};
 
   amrex::Real molefrac[NUM_SPECIES] = {0.0};
   amrex::Real massfrac[NUM_SPECIES] = {0.0};
@@ -201,52 +184,42 @@ bcnormal(
   amrex::Real massfrac_air[NUM_SPECIES] = {0.0};
   massfrac_air[prob_parm.oxidID] = 0.233;
   massfrac_air[prob_parm.bathID] = 0.767;
-  amrex::Real Temp = 300.;
 
   auto eos = pele::physics::PhysicsType::eos();
 
-  if(idir == 2){
+  if(idir == 2 and sgn == 1){
 
-    amrex::Real r = sqrt(pow((x0-x[0]),2)+pow((y0-x[1]),2));
+    amrex::Real r = sqrt(pow((0.0-x[0]),2)+pow((0.0-x[1]),2));
 
-    // amrex::Real dt = 2e-5;
+    pele::physics::PMF::pmf(pmf_data, r, r, vel_from_file);
 
-    // int refresh_freq = 10;
-
-    // int n_const = 5;
-
-    // amrex::Real t0 = 0.0;
-
-    // amrex::Real A_fluctuation[200] = {-0.101095, 0.329953, 0.321893, -0.508907, 0.267847, 0.239758, 0.243639, 0.173476, 0.837604, 0.524968, 0.780876, 0.428267, -0.637454, -0.769445, -0.946879, 0.244172, 0.209526, 0.589716, 0.687176, 0.525888, -0.290012, -0.879359, -0.155726, 0.213109, 0.289708, -0.287101, 0.195927, -0.451034, -0.749719, -0.214496, 0.0347229, 0.149186, -0.884544, -0.643384, 0.640279, 0.383303, 0.596374, -0.116082, -0.44322, 0.433978, -0.591115, -0.662344, -0.137756, -0.228568, -0.431789, -0.0846348, -0.984396, 0.777738, -0.494919, 0.70278, 0.303626, 0.215069, 0.823421, -0.8521, -0.571822, 0.113128, -0.139201, 0.624105, 0.662094, 0.11108, -0.590391, -0.303183, -0.739735, -0.474935, 0.0534326, 0.900544, 0.908368, -0.350193, -0.215538, -0.534852, -0.916216, 0.193347, -0.197196, -0.053971, 0.964779, 0.371015, 0.861394, 0.980383, 0.148753, -0.633525, 0.683163, -0.547621, 0.581544, 0.506584, -0.399721, -0.990278, -0.380288, 0.461077, 0.633827, -0.718194, -0.427843, -0.956564, -0.0213777, -0.167578, -0.431499, -0.967945, -0.267034, -0.523131, -0.318139, 0.517428, -0.0579822, -0.234354, -0.289225, 0.744822, 0.711675, -0.324446, 0.115837, 0.573069, -0.344063, -0.73541, 0.939544, -0.6609, -0.283031, 0.521089, 0.845684, 0.317248, 0.530811, -0.534604, -0.221675, 0.164638, -0.252798, 0.350482, 0.208074, 0.725824, -0.817095, 0.776575, 0.757879, -0.0841292, -0.746555, -0.56026, -0.566701, 0.195463, 0.205386, 0.144073, -0.0597154, -0.082939, 0.819628, -0.943878, -0.50987, -0.524435, -0.679288, -0.570326, -0.185335, 0.0376813, 0.950763, -0.33965, -0.645071, 0.481574, 0.125746, 0.133255, -0.353788, 0.872947, -0.516263, 0.854287, 0.598771, -0.333358, 0.630862, 0.35665, 0.582513, 0.884307, 0.79639, -0.984189, 0.07977, 0.00177646, 0.159885, -0.979945, 0.918837, -0.0204875, -0.923824, -0.591033, 0.455077, -0.603111, -0.161358, -0.730257, 0.43457, -0.210595, -0.0699077, 0.789499, -0.729021, -0.944162, -0.077246, -0.0828092, 0.928785, 0.406491, -0.228522, 0.527557, -0.926867, -0.59766, -0.115793, 0.655646, -0.713353, -0.319403, 0.671457, 0.366417, 0.682373, -0.168658, 0.386472, 0.601211, 0.810855, 0.462648};
-    // amrex::Real B_fluctuation[200] = {-0.101095, 0.329953, 0.321893, -0.508907, 0.267847, 0.239758, 0.243639, 0.173476, 0.837604, 0.524968, 0.780876, 0.428267, -0.637454, -0.769445, -0.946879, 0.244172, 0.209526, 0.589716, 0.687176, 0.525888, -0.290012, -0.879359, -0.155726, 0.213109, 0.289708, -0.287101, 0.195927, -0.451034, -0.749719, -0.214496, 0.0347229, 0.149186, -0.884544, -0.643384, 0.640279, 0.383303, 0.596374, -0.116082, -0.44322, 0.433978, -0.591115, -0.662344, -0.137756, -0.228568, -0.431789, -0.0846348, -0.984396, 0.777738, -0.494919, 0.70278, 0.303626, 0.215069, 0.823421, -0.8521, -0.571822, 0.113128, -0.139201, 0.624105, 0.662094, 0.11108, -0.590391, -0.303183, -0.739735, -0.474935, 0.0534326, 0.900544, 0.908368, -0.350193, -0.215538, -0.534852, -0.916216, 0.193347, -0.197196, -0.053971, 0.964779, 0.371015, 0.861394, 0.980383, 0.148753, -0.633525, 0.683163, -0.547621, 0.581544, 0.506584, -0.399721, -0.990278, -0.380288, 0.461077, 0.633827, -0.718194, -0.427843, -0.956564, -0.0213777, -0.167578, -0.431499, -0.967945, -0.267034, -0.523131, -0.318139, 0.517428, -0.0579822, -0.234354, -0.289225, 0.744822, 0.711675, -0.324446, 0.115837, 0.573069, -0.344063, -0.73541, 0.939544, -0.6609, -0.283031, 0.521089, 0.845684, 0.317248, 0.530811, -0.534604, -0.221675, 0.164638, -0.252798, 0.350482, 0.208074, 0.725824, -0.817095, 0.776575, 0.757879, -0.0841292, -0.746555, -0.56026, -0.566701, 0.195463, 0.205386, 0.144073, -0.0597154, -0.082939, 0.819628, -0.943878, -0.50987, -0.524435, -0.679288, -0.570326, -0.185335, 0.0376813, 0.950763, -0.33965, -0.645071, 0.481574, 0.125746, 0.133255, -0.353788, 0.872947, -0.516263, 0.854287, 0.598771, -0.333358, 0.630862, 0.35665, 0.582513, 0.884307, 0.79639, -0.984189, 0.07977, 0.00177646, 0.159885, -0.979945, 0.918837, -0.0204875, -0.923824, -0.591033, 0.455077, -0.603111, -0.161358, -0.730257, 0.43457, -0.210595, -0.0699077, 0.789499, -0.729021, -0.944162, -0.077246, -0.0828092, 0.928785, 0.406491, -0.228522, 0.527557, -0.926867, -0.59766, -0.115793, 0.655646, -0.713353, -0.319403, 0.671457, 0.366417, 0.682373, -0.168658, 0.386472, 0.601211, 0.810855, 0.462648};
-
-    // int n = abs(time-t0)/(dt);
-    // int n_skip_lines = floor(n/refresh_freq);
-
-    // amrex::Real C[5];
-    // amrex::Real D[5];
-
-    // for (int i = 0; i < 5; i++) {
-    //     C[i] = abs(A_fluctuation[i + (n_skip_lines * n_const)]);
-    //     D[i] = B_fluctuation[i + (n_skip_lines * n_const)];
-    // }
-
-    // amrex::Real amp = prob_parm.vel_fluct;
-
-    // amrex::Real fluctuation = amp * ((std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[0] )* 1.5 / Ro_swirler))
-    //                                 +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[1] )* 1.75 / Ro_swirler))
-    //                                 +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[2] )* 0.79 / Ro_swirler))
-    //                                 +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[3] )* 1.1 / Ro_swirler))
-    //                                 +(std::sin(2 * Pi * (std::sqrt(std::pow(x[0]-x0,2)+std::pow(x[1]-y0,2)) - D[4] )* 0.95 / Ro_swirler)));
-
-    // for (int n = 0; n < NUM_SPECIES; ++n) {
-    //     massfrac[n] = massfrac_air[n];
-    // }
-     
     amrex::Real vel_swirler_x = 0.0; 
     amrex::Real vel_swirler_y = 0.0; 
-    amrex::Real vel_swirler_z = prob_parm.U_b;
+    amrex::Real vel_swirler_z = vel_from_file[5];
 
+    double beta  = atan(x[1]/x[0]);
+    double alpha = atan(x[0]/x[1]);
+
+    vel_swirler_x = vel_from_file[3]*cos(beta) - vel_from_file[4]*cos(alpha);
+    vel_swirler_y = vel_from_file[4]*cos(beta) + vel_from_file[3]*cos(alpha);
+
+
+    if(x[1] < 0){
+      vel_swirler_x = -vel_swirler_x;
+    }
+
+    if(x[0] < 0){
+      vel_swirler_y = -vel_swirler_y;
+    }
+
+    // // if(x[1] > -1.e-4 and x[1] < 1.e-4){
+    // if(r > 0.0085 and r < 0.019 and x[0] > -5.e-4 and x[0] < 5.e-4){
+    // // if(x[0] < 0.03){
+    //   amrex::Print() << " r = " << r << " x-vel = " << vel_swirler_x << " y-vel = " << vel_swirler_y << std::endl;
+      // printf("x =  %e y = %e z = %e \n", x[0],x[2],x[2]);
+      // printf("r = %e x-vel = %e y-vel = %e \n", r, vel_swirler_x, vel_swirler_y);
+    // }
+    // amrex::Print() << " x = " << x[0] << " y = " << x[1] << " z = " << x[2] << std::endl;
 
     s_ext[VELX] = vel_swirler_x;
     s_ext[VELY] = vel_swirler_y;
@@ -263,72 +236,58 @@ bcnormal(
       for (int n = 0; n < NUM_SPECIES; ++n)
         massfrac[n] = prob_parm.Ys[n]; 
     }
-    // for (int n = 0; n < NUM_SPECIES; ++n)
-    //   massfrac[n] = prob_parm.Ys[n]; 
     
+    // printf("Y-fuel %e \n", massfrac[prob_parm.fuelID]);
+    // set_Y_from_Phi(prob_parm,prob_parm.phi_in,massfrac);
 
+    
+    //for (int n = 0; n < NUM_SPECIES; ++n){
+    //   massfrac[n] = prob_parm.Ys[n]; 
+    //}
+    
+    
+    s_ext[TEMP] = prob_parm.T_in;
 
-    Temp = prob_parm.T_in;
-  }
+    amrex::Real rho_cgs, P_cgs, RhoH_temp;
+    P_cgs = prob_parm.P_mean * 10.0;
 
-  else if(idir == 1){
+    // set_Y_from_Phi(prob_parm,prob_parm.phi_jet,massfrac);
+    eos.PYT2R(P_cgs, massfrac, s_ext[TEMP], rho_cgs);
+    s_ext[DENSITY] = rho_cgs * 1.0e3;
 
-    for (int n = 0; n < NUM_SPECIES; ++n)
-        massfrac[n] = massfrac_air[n]; 
+    eos.TY2H(s_ext[TEMP], massfrac, RhoH_temp);
+    s_ext[RHOH] = RhoH_temp * 1.0e-4 * s_ext[DENSITY];   // CGS -> MKS conversion
 
-    s_ext[VELX] = 0.0;
-    s_ext[VELZ] = 0.0;
-    s_ext[VELY] = 0.0;
-    Temp = prob_parm.T_in;
-
-    amrex::Real r = sqrt(pow((prob_parm.jet_loc_x-x[0]),2)+pow((prob_parm.jet_loc_z-x[2]),2));
-    if(r <= prob_parm.jet_radius){
-      if(sgn == 1){
-        s_ext[VELY] = prob_parm.U_jet;
-      }
-      else{
-        s_ext[VELY] = -prob_parm.U_jet;
-      }
-      Temp = prob_parm.Tb_init;
+    for (int n = 0; n < NUM_SPECIES; n++) {
+      s_ext[FIRSTSPEC+n] = massfrac[n] * s_ext[DENSITY];
     }
   }
+  else{
+    s_ext[TEMP] = prob_parm.T_in;
 
-  else if(idir == 0){
-
-    for (int n = 0; n < NUM_SPECIES; ++n)
-        massfrac[n] = massfrac_air[n]; 
-
-    s_ext[VELX] = 0.0;
-    s_ext[VELZ] = 0.0;
-    s_ext[VELY] = 0.0;
-    Temp = prob_parm.T_in;
-
-    amrex::Real r = sqrt(pow((prob_parm.jet_loc_y-x[1]),2)+pow((prob_parm.jet_loc_z-x[2]),2));
-    if(r <= prob_parm.jet_radius){
-      if(sgn == 1){
-        s_ext[VELX] = prob_parm.U_jet;
-      }
-      else{
-        s_ext[VELX] = -prob_parm.U_jet;
-      }
-      Temp = prob_parm.Tb_init;
+    if(prob_parm.phi_target > 0.0){
+      amrex::Real m = (prob_parm.phi_in - prob_parm.phi_target)/(prob_parm.t_start-(prob_parm.t_start+prob_parm.dt_phi_change));
+      amrex::Real phi_instantaneous = m*(time-prob_parm.t_start)+prob_parm.phi_in;
+      set_Y_from_Phi(prob_parm,phi_instantaneous,massfrac);
     }
-  }
+    else{
+      for (int n = 0; n < NUM_SPECIES; ++n)
+        massfrac[n] = prob_parm.Ys[n]; 
+    }
 
-  s_ext[TEMP] = Temp;
+    amrex::Real rho_cgs, P_cgs, RhoH_temp;
+    P_cgs = prob_parm.P_mean * 10.0;
 
-  amrex::Real rho_cgs, P_cgs, RhoH_temp;
-  P_cgs = prob_parm.P_mean * 10.0;
+    // set_Y_from_Phi(prob_parm,prob_parm.phi_jet,massfrac);
+    eos.PYT2R(P_cgs, massfrac, s_ext[TEMP], rho_cgs);
+    s_ext[DENSITY] = rho_cgs * 1.0e3;
 
-  // set_Y_from_Phi(prob_parm,prob_parm.phi_jet,massfrac);
-  eos.PYT2R(P_cgs, massfrac, s_ext[TEMP], rho_cgs);
-  s_ext[DENSITY] = rho_cgs * 1.0e3;
+    eos.TY2H(s_ext[TEMP], massfrac, RhoH_temp);
+    s_ext[RHOH] = RhoH_temp * 1.0e-4 * s_ext[DENSITY];   // CGS -> MKS conversion
 
-  eos.TY2H(s_ext[TEMP], massfrac, RhoH_temp);
-  s_ext[RHOH] = RhoH_temp * 1.0e-4 * s_ext[DENSITY];   // CGS -> MKS conversion
-
-  for (int n = 0; n < NUM_SPECIES; n++) {
-    s_ext[FIRSTSPEC+n] = massfrac[n] * s_ext[DENSITY];
+    for (int n = 0; n < NUM_SPECIES; n++) {
+      s_ext[FIRSTSPEC+n] = massfrac[n] * s_ext[DENSITY];
+    }
   }
 }
 
