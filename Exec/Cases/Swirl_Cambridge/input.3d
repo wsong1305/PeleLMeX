@@ -1,7 +1,7 @@
 #----------------------TIME STEPING CONTROL----------------------
-amr.max_step        = 10000             # maximum number of time steps
-amr.stop_time       = 100.e-3            # final physical time
-amr.cfl             = 0.2             # cfl number for hyperbolic system
+amr.max_step        = 100              # maximum number of time steps
+amr.stop_time       = 1.e-3            # final physical time
+amr.cfl             = 0.5             # cfl number for hyperbolic system
 amr.dt_shrink       = 0.1              # scale back initial timestep
 amr.change_max      = 1.1              # max timestep size increase
 # amr.fixed_dt        = 1.0e-07
@@ -24,7 +24,7 @@ peleLM.hi_bc = NoSlipWallAdiab NoSlipWallAdiab Outflow
 #-------------------------AMR CONTROL----------------------------
 amr.n_cell          = 128 128 128  # Level 0 number of cells in each direction
 peleLM.verbose      = 5            # amr verbosity level
-amr.max_level       = 2            # maximum level number allowed
+amr.max_level       = 0            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2      # refinement ratio
 amr.regrid_int      = 10           # how often to regrid
 amr.n_error_buf     = 1 1 1 2      # number of buffer cells in error est
@@ -33,21 +33,10 @@ amr.blocking_factor = 16           # block factor in grid generation
 amr.max_grid_size   = 32           # maximum box size
 
 #----------------------- PROBLEM PARAMETERS --------------------
-prob.standoff = -0.29
-prob.pertmag = 0.004
-prob.amplification = 10
 prob.T_in = 300.0
-# prob.T_in = 1500.0
-prob.Do_swirler = 37.e-3
-prob.Di_swirler = 25.e-3
-prob.U_b        = 10.73 #bulk velocity swirler
-prob.U_c        = 0.0   #coflow velocity
-prob.swirl_angle= 10
-prob.U_jet      = 200.0
-prob.D_jet      = 10.e-3
-prob.phi_jet    = 8.0
-prob.ignition   = false
-prob.ign_region = 3.0e-3 10.e-3 10.e-3 # order is: first value not used; z_center; radius
+prob.P_mean = 101325.
+prob.U_b        = 15. # initial velocity z-velocity
+pmf.datafile    = "avgThermoState_Ub_10_7ms.csv"
 
 # Properties of injected particles
 spray.jet1.T = 300.
@@ -102,7 +91,7 @@ EB.loc_x            = 12.5e-3
 EB.loc_y            = 0.0e-3
 
 #-------------------------IO CONTROL----------------------------
-amr.restart             = chk03350
+# amr.restart             = chk03350
 # amr.initDataPlt         = non_reactive_air/plt02744
 # amr.initDataPlt         = non_reactive_spray/plt02528
 amr.check_file          = chk          # root name of checkpoint file
@@ -129,9 +118,9 @@ amr.HR.max_level = 2
 amr.HR.value_greater = 2.e+09
 amr.HR.field_name = HeatRelease
 
-amr.inBox.max_level     = 1
-amr.inBox.in_box_lo     =   -1.0e-3      -1.0e-3      0.0e-3
-amr.inBox.in_box_hi     =    1.0e-3       1.0e-3      5.0e-3
+amr.inBox.max_level     = 2
+amr.inBox.in_box_lo     =   -20.0e-3      -20.0e-3     -12.0e-3
+amr.inBox.in_box_hi     =    20.0e-3       20.0e-3      10.0e-3
 
 amr.lo_temp.max_level = 0
 amr.lo_temp.value_greater = 400
@@ -163,12 +152,13 @@ amr.flame_tracer.field_name = Y(CH2O)
 # amr.magvort.vorticity_greater = 1000
 
 # --------------- INPUTS TO CHEMISTRY REACTOR ---------------
-peleLM.chem_integrator = "ReactorCvode"
-# peleLM.chem_integrator = "ReactorNull"
+# peleLM.chem_integrator = "ReactorCvode"
+peleLM.chem_integrator = "ReactorNull"
 peleLM.use_typ_vals_chem = 1          # Use species/temp typical values in CVODE
 ode.rtol = 1.0e-6                     # Relative tolerance of the chemical solve
 ode.atol = 1.0e-5                     # Absolute tolerance factor applied on typical values
-cvode.solve_type = sparse_direct     # CVODE Linear solve type (for Newton direction)
+# cvode.solve_type = sparse_direct     # CVODE Linear solve type (for Newton direction)
+cvode.solve_type = dense_direct     # CVODE Linear solve type (for Newton direction)
 # cvode.max_order  = 4                  # CVODE max BDF order.
 
 #--------------------------OMP TILE INPUTS-----------------------------
@@ -184,54 +174,54 @@ amrex.the_arena_is_managed = 1
 
 peleLM.deltaT_verbose = 2
 peleLM.deltaT_crashIfFailing = 0
-nodal_proj.verbose = 2
-mac_proj.verbose   = 2
-nodal_proj.atol = 1.0e-10
-nodal_proj.rtol = 1.0e-10
+nodal_proj.verbose = 1
+mac_proj.verbose   = 1
+# nodal_proj.atol = 1.0e-10
+# nodal_proj.rtol = 1.0e-10
 
-#------------------- HYPRE ---------------------
-nodal_proj.mg_max_coarsening_level = 0
-nodal_proj.m_mac_mg_atol = 1.0e-10
-nodal_proj.m_mac_mg_rtol = 1.0e-10
-
-nodal_proj.bottom_solver = "hypre"
-nodal_proj.hypre_namespace = nodal_proj.hypre
-
-nodal_proj.hypre.verbose = 0
-nodal_proj.hypre.hypre_solver = GMRES
-nodal_proj.hypre.hypre_preconditioner = BoomerAMG
-nodal_proj.hypre.num_krylov = 200
-nodal_proj.hypre.max_iterations = 200
-
-nodal_proj.hypre.bamg_verbose = 0
-nodal_proj.hypre.bamg_coarsen_type = 8
-nodal_proj.hypre.bamg_interp_type = 6
-nodal_proj.hypre.bamg_relax_type = 11
-nodal_proj.hypre.bamg_num_sweeps = 2
-nodal_proj.hypre.bamg_cycle_type = 1
-nodal_proj.hypre.bamg_relax_order = 0
-nodal_proj.hypre.bamg_keep_transpose = 1
-nodal_proj.hypre.bamg_trunc_factor = 0.44351885396256086
-nodal_proj.hypre.bamg_strong_threshold = 0.30015419030906665
-nodal_proj.hypre.bamg_pmax_elmts = 4
-nodal_proj.hypre.bamg_max_levels = 6
-
-nodal_proj.hypre.bamg_agg_num_levels = 3
-nodal_proj.hypre.bamg_agg_interp_type = 5
-nodal_proj.hypre.bamg_agg_pmax_elmts = 5
-
-nodal_proj.hypre.bamg_smooth_type = 5
-nodal_proj.hypre.bamg_smooth_num_sweeps = 1
-nodal_proj.hypre.bamg_smooth_num_levels = 1
-nodal_proj.hypre.bamg_ilu_type = 0
-nodal_proj.hypre.bamg_ilu_level = 0
-nodal_proj.hypre.bamg_ilu_max_iter = 1
-nodal_proj.hypre.bamg_ilu_reordering_type = 0
-nodal_proj.hypre.bamg_ilu_tri_solve = 0
-nodal_proj.hypre.bamg_ilu_lower_jacobi_iters = 13
-nodal_proj.hypre.bamg_ilu_upper_jacobi_iters = 5
-
-nodal_proj.hypre.recompute_preconditioner = 0
-nodal_proj.hypre.write_matrix_files = 0
-nodal_proj.hypre.overwrite_existing_matrix_files = 0
-nodal_proj.hypre.adjust_singular_matrix = 1
+# #------------------- HYPRE ---------------------
+# nodal_proj.mg_max_coarsening_level = 0
+# nodal_proj.m_mac_mg_atol = 1.0e-10
+# nodal_proj.m_mac_mg_rtol = 1.0e-10
+# 
+# nodal_proj.bottom_solver = "hypre"
+# nodal_proj.hypre_namespace = nodal_proj.hypre
+# 
+# nodal_proj.hypre.verbose = 0
+# nodal_proj.hypre.hypre_solver = GMRES
+# nodal_proj.hypre.hypre_preconditioner = BoomerAMG
+# nodal_proj.hypre.num_krylov = 200
+# nodal_proj.hypre.max_iterations = 200
+# 
+# nodal_proj.hypre.bamg_verbose = 0
+# nodal_proj.hypre.bamg_coarsen_type = 8
+# nodal_proj.hypre.bamg_interp_type = 6
+# nodal_proj.hypre.bamg_relax_type = 11
+# nodal_proj.hypre.bamg_num_sweeps = 2
+# nodal_proj.hypre.bamg_cycle_type = 1
+# nodal_proj.hypre.bamg_relax_order = 0
+# nodal_proj.hypre.bamg_keep_transpose = 1
+# nodal_proj.hypre.bamg_trunc_factor = 0.44351885396256086
+# nodal_proj.hypre.bamg_strong_threshold = 0.30015419030906665
+# nodal_proj.hypre.bamg_pmax_elmts = 4
+# nodal_proj.hypre.bamg_max_levels = 6
+# 
+# nodal_proj.hypre.bamg_agg_num_levels = 3
+# nodal_proj.hypre.bamg_agg_interp_type = 5
+# nodal_proj.hypre.bamg_agg_pmax_elmts = 5
+# 
+# nodal_proj.hypre.bamg_smooth_type = 5
+# nodal_proj.hypre.bamg_smooth_num_sweeps = 1
+# nodal_proj.hypre.bamg_smooth_num_levels = 1
+# nodal_proj.hypre.bamg_ilu_type = 0
+# nodal_proj.hypre.bamg_ilu_level = 0
+# nodal_proj.hypre.bamg_ilu_max_iter = 1
+# nodal_proj.hypre.bamg_ilu_reordering_type = 0
+# nodal_proj.hypre.bamg_ilu_tri_solve = 0
+# nodal_proj.hypre.bamg_ilu_lower_jacobi_iters = 13
+# nodal_proj.hypre.bamg_ilu_upper_jacobi_iters = 5
+# 
+# nodal_proj.hypre.recompute_preconditioner = 0
+# nodal_proj.hypre.write_matrix_files = 0
+# nodal_proj.hypre.overwrite_existing_matrix_files = 0
+# nodal_proj.hypre.adjust_singular_matrix = 1
