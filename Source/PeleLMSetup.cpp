@@ -460,6 +460,11 @@ void PeleLM::readParameters() {
    }
 #endif
 
+   m_Zdir_refine_LevMax = max_level;
+   pp.query("refine_Zdir_max_level",m_Zdir_refine_LevMax);
+   pp.query("MaxZdir_refine",m_MaxZdir_refine);
+
+
    // -----------------------------------------
    // Evaluate mode variables
    // -----------------------------------------
