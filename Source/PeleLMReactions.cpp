@@ -98,8 +98,6 @@ void PeleLM::advanceChemistry(int lev,
                        , amrex::Gpu::gpuStream()
 #endif
                        );
-      dt_incr   = a_dt;
-      time_chem = 0;
 
       // Convert CGS -> MKS
       ParallelFor(bx, [rhoY_n, rhoH_n, extF_rhoY, extF_rhoH]
@@ -165,9 +163,9 @@ void PeleLM::advanceChemistry(int lev,
    }
 }
 
-// This advanceChemistry works with BoxArrays built such that each box 
-// is either covered or uncovered and chem. integrator is called only 
-// on uncovered boxes. 
+// This advanceChemistry works with BoxArrays built such that each box
+// is either covered or uncovered and chem. integrator is called only
+// on uncovered boxes.
 void PeleLM::advanceChemistryBAChem(int lev,
                               const Real &a_dt,
                               MultiFab &a_extForcing)
