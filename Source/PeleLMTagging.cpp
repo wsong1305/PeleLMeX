@@ -70,6 +70,14 @@ PeleLM::ErrorEst( int lev,
 
    if (lev >= m_Zdir_refine_LevMax ) {
       // Untag cells when z is larger than m_MaxZdir_refine
+
+      const amrex::Real* prob_lo = geom[lev].ProbLo();
+      const amrex::Real* dx = geom[lev].CellSize();
+      const amrex::Real prob_lo2 = prob_lo[2];
+      const amrex::Real dx2 = dx[2];
+
+      const amrex::Real MaxZdir_refine = m_MaxZdir_refine;
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -77,18 +85,14 @@ PeleLM::ErrorEst( int lev,
       {
           const auto& bx    = mfi.tilebox();
           auto tag          = tags.array(mfi);
-          
-          const int* domlo = geom[lev].Domain().loVect();
-          const int* domhi = geom[lev].Domain().hiVect();
-          const amrex::Real* prob_lo = geom[lev].ProbLo();
-          const amrex::Real* dx = geom[lev].CellSize();
-
+   
           amrex::ParallelFor(bx,
-          [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k)
+          [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) 
           {
-              const amrex::Real z = prob_lo[2] + (k+0.5)*dx[2];
+              const amrex::Real z = prob_lo2 + (k+0.5)*dx2;
 
-              if (z > m_MaxZdir_refine) {
+              // if (z > 1.e-3) {
+              if (z > MaxZdir_refine) {
                   tag(i,j,k) = TagBox::CLEAR;
               }
           });
