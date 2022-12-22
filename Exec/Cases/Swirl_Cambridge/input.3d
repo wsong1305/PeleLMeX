@@ -1,19 +1,26 @@
 #----------------------TIME STEPING CONTROL----------------------
-amr.max_step        = 100              # maximum number of time steps
-amr.stop_time       = 1.e-3            # final physical time
-amr.cfl             = 0.5             # cfl number for hyperbolic system
+amr.max_step        = 10000             # maximum number of time steps
+amr.stop_time       = 20.e-3            # final physical time
+amr.cfl             = 0.15              # cfl number for hyperbolic system
 amr.dt_shrink       = 0.1              # scale back initial timestep
 amr.change_max      = 1.1              # max timestep size increase
-# amr.fixed_dt        = 1.0e-07
+# amr.fixed_dt        = 1.0e-09
 
 #-------------
 geometry.is_periodic = 0 0 0            # Periodicity in each direction: 0 => no, 1 => yes
 geometry.coord_sys   = 0                # 0 => cart, 1 => RZ
-#geometry.prob_lo     =-48.5e-3 -48.5e-3 -11.e-3   # x_lo y_lo
-#geometry.prob_hi     = 48.5e-3  48.5e-3  86.e-3  # x_hi y_hi
 
-geometry.prob_lo     =-47.5e-3 -47.5e-3 -12.e-3   # x_lo y_lo
-geometry.prob_hi     = 47.5e-3  47.5e-3  83.e-3  # x_hi y_hi
+# works on 3 and might work on 4 levels
+geometry.prob_lo     =-40.e-3 -40.e-3 -12.5e-3   # x_lo y_lo
+geometry.prob_hi     = 40.e-3  40.e-3  147.5e-3  # x_hi y_hi
+
+# works with 2 levels
+# geometry.prob_lo     =-40.e-3 -40.e-3 -10.15e-3   # x_lo y_lo
+# geometry.prob_hi     = 40.e-3  40.e-3  69.85e-3  # x_hi y_hi
+
+# works with 1 level
+# geometry.prob_lo     =-40.e-3 -40.e-3 -10.2e-3   # x_lo y_lo
+# geometry.prob_hi     = 40.e-3  40.e-3  69.8e-3  # x_hi y_hi
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # Interior, Inflow, Outflow, Symmetry,
@@ -22,20 +29,20 @@ peleLM.lo_bc = NoSlipWallAdiab NoSlipWallAdiab Inflow
 peleLM.hi_bc = NoSlipWallAdiab NoSlipWallAdiab Outflow
 
 #-------------------------AMR CONTROL----------------------------
-amr.n_cell          = 128 128 128  # Level 0 number of cells in each direction
+amr.n_cell          = 128 128 256  # Level 0 number of cells in each direction
 peleLM.verbose      = 5            # amr verbosity level
-amr.max_level       = 0            # maximum level number allowed
+amr.max_level       = 1            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2      # refinement ratio
-amr.regrid_int      = 10           # how often to regrid
+amr.regrid_int      = 5            # how often to regrid
 amr.n_error_buf     = 1 1 1 2      # number of buffer cells in error est
-amr.grid_eff        = 0.7          # what constitutes an efficient grid
+amr.grid_eff        = 0.9          # what constitutes an efficient grid
 amr.blocking_factor = 16           # block factor in grid generation
 amr.max_grid_size   = 32           # maximum box size
 
 #----------------------- PROBLEM PARAMETERS --------------------
-prob.T_in = 300.0
+prob.T_in = 388.0
 prob.P_mean = 101325.
-prob.U_b        = 15. # initial velocity z-velocity
+prob.U_b        = 0. # initial velocity z-velocity
 pmf.datafile    = "avgThermoState_Ub_10_7ms.csv"
 
 # Properties of injected particles
@@ -43,46 +50,53 @@ spray.jet1.T = 300.
 
 # Mean particle diameter
 spray.jet1.dist_type = Weibull
-spray.jet1.mean_dia = 30.E-6
-spray.jet1.k = 3.
+spray.jet1.mean_dia = 60.E-6
+spray.jet1.k = 4.
 spray.jet1.jet_dia = 0.15E-3
-spray.jet1.spread_angle = 90.
+spray.jet1.spread_angle = 60.
+spray.jet1.hollow_spread = 5.0
 spray.jet1.hollow_spray = true
-spray.jet1.mass_flow_rate = 0.12E-3
+spray.jet1.mass_flow_rate = 0.24E-3
 spray.jet1.jet_cent = 0. 0. 1.E-4
 spray.jet1.jet_norm = 0. 0. 1.
-spray.jet1.jet_vel = 9.9
+spray.jet1.jet_vel = 15.
+spray.jet1.end_time = 100.
 
 #--------------------SPRAY PARTICLE DATA-----------------------
 peleLM.do_spray_particles = 1
 particles.derive_plot_vars = 1
 particles.v = 0
-particles.cfl = 0.7
+particles.cfl = 1.0
 particles.mom_transfer = 1
 particles.mass_transfer = 1
 particles.init_function = 1 # Sprays are initialized using SprayParticleInitInsert.cpp
 particles.write_ascii_files = 0
-particles.parcel_size = 5. # Number of particles per parcel
-particles.fuel_species = NXC7H16
-# Properties for liquid n-heptane
-particles.fuel_crit_temp = 540.3 # K (at Pc = 1.8170 MPa)
-particles.fuel_boil_temp = 370. # K (at atmospheric conditions)
+particles.parcel_size = 1. # Number of particles per parcel
+particles.fuel_species = POSF10325
+# Properties for liquid C1 from Dario
+particles.fuel_crit_temp = 667. # K (at Pc = 1.8170 MPa)
 particles.fuel_ref_temp = 298.15
-particles.fuel_latent = 360600.
-particles.fuel_cp = 2263. # Cp at 298
-particles.fuel_rho = 683.75
+particles.fuel_latent = 379800
+particles.fuel_cp = 2000. # Cp at fuel_ref_temp
+particles.fuel_rho = 843.
 particles.use_splash_model = false
-particles.NXC7H16_psat = 4.02832 1268.636 -56.199 1.E5
-# particles.NC12H26_rho = 1569.56432408 -5.48793654915 0.0121644670893 -6.00307025807e-05
+particles.fuel_boil_temp = 448. # K (at atmospheric conditions)
+
+# --------------- Mixture fraction definition -----------------------
+peleLM.fuel_name = POSF10325
+peleLM.mixtureFraction.format = Cantera
+peleLM.mixtureFraction.type   = mass
+peleLM.mixtureFraction.oxidTank = O2:0.233 N2:0.767
+peleLM.mixtureFraction.fuelTank = POSF10325:1.0
 
 #-------------------------EB CONTROL----------------------------
 eb2.geom_type = UserDefined
 # eb2.geom_type = all_regular
 # eb2.small_volfrac = 1.e-07 #works for 4 AMR levels
-eb2.small_volfrac = 1.e-6
+eb2.small_volfrac = 1.e-2
 eb2.maxiter = 500
 
-EB.out_diam         = 37.e-3
+EB.out_diam         = 35.e-3
 EB.in_diam          = 19.6e-3
 EB.bluff_diam       = 25.0e-3
 EB.horizontal_plane = 0.0
@@ -91,15 +105,15 @@ EB.loc_x            = 12.5e-3
 EB.loc_y            = 0.0e-3
 
 #-------------------------IO CONTROL----------------------------
-# amr.restart             = chk03350
+amr.restart             = chk06900
 # amr.initDataPlt         = non_reactive_air/plt02744
 # amr.initDataPlt         = non_reactive_spray/plt02528
 amr.check_file          = chk          # root name of checkpoint file
-amr.check_int           = 50          # number of timesteps between checkpoints
+amr.check_int           = 100          # number of timesteps between checkpoints
 amr.plot_file           = plt          # root name of plot file
 # amr.plot_int            = 5          # number of timesteps between plot files
-amr.plot_per            = 2.e-4
-amr.derive_plot_vars    = mag_vort avg_pressure mass_fractions
+amr.plot_per            = 4.e-4
+amr.derive_plot_vars    = mag_vort avg_pressure mass_fractions mixture_fraction
 amr.grid_log            = grdlog       # name of grid logging file
 
 #-------------------------PeleLM CONTROL----------------------------
@@ -108,35 +122,38 @@ peleLM.incompressible = 0
 peleLM.rho = 1.17
 peleLM.mu = 0.0
 peleLM.use_wbar = 1
-peleLM.sdc_iterMax = 2
+peleLM.sdc_iterMax = 1
 peleLM.floor_species = 1
 
 #--------------------REFINEMENT CONTROL------------------------
+
+peleLM.refine_EB_max_level = 1
+eb2.max_level_generation = 1
+
+peleLM.refine_Zdir_max_level = 0
+peleLM.MaxZdir_refine = 30.e-3
+
 amr.refinement_indicators = inBox HR flame_tracer
 
-amr.HR.max_level = 2
-amr.HR.value_greater = 2.e+09
+amr.HR.max_level = 0
+amr.HR.value_greater = 2.e+08
 amr.HR.field_name = HeatRelease
 
-amr.inBox.max_level     = 2
+amr.inBox.max_level     = 1
 amr.inBox.in_box_lo     =   -20.0e-3      -20.0e-3     -12.0e-3
-amr.inBox.in_box_hi     =    20.0e-3       20.0e-3      10.0e-3
+amr.inBox.in_box_hi     =    20.0e-3       20.0e-3       5.0e-3
 
 amr.lo_temp.max_level = 0
 amr.lo_temp.value_greater = 400
 amr.lo_temp.field_name = temp
 
-amr.Vz_hi.max_level = 0
-amr.Vz_hi.value_greater = 20
-amr.Vz_hi.field_name = z_velocity
-
 amr.fuel_tracer.max_level = 0
 amr.fuel_tracer.value_greater = 2.0e-1
 amr.fuel_tracer.field_name = Y(NXC7H16)
 
-amr.flame_tracer.max_level = 1
-amr.flame_tracer.value_greater = 1.0e-3
-amr.flame_tracer.field_name = Y(CH2O)
+amr.flame_tracer.max_level = 2
+amr.flame_tracer.value_greater = 3.0e-3
+amr.flame_tracer.field_name = Y(OH)
 
 # amr.HR.max_level = 3
 # amr.HR.value_greater = 1.e8
@@ -152,13 +169,13 @@ amr.flame_tracer.field_name = Y(CH2O)
 # amr.magvort.vorticity_greater = 1000
 
 # --------------- INPUTS TO CHEMISTRY REACTOR ---------------
-# peleLM.chem_integrator = "ReactorCvode"
-peleLM.chem_integrator = "ReactorNull"
-peleLM.use_typ_vals_chem = 1          # Use species/temp typical values in CVODE
+peleLM.chem_integrator = "ReactorCvode"
+# peleLM.chem_integrator = "ReactorNull"
+# peleLM.use_typ_vals_chem = 1          # Use species/temp typical values in CVODE
 ode.rtol = 1.0e-6                     # Relative tolerance of the chemical solve
 ode.atol = 1.0e-5                     # Absolute tolerance factor applied on typical values
-# cvode.solve_type = sparse_direct     # CVODE Linear solve type (for Newton direction)
-cvode.solve_type = dense_direct     # CVODE Linear solve type (for Newton direction)
+cvode.solve_type = sparse_direct     # CVODE Linear solve type (for Newton direction)
+# cvode.solve_type = dense_direct     # CVODE Linear solve type (for Newton direction)
 # cvode.max_order  = 4                  # CVODE max BDF order.
 
 #--------------------------OMP TILE INPUTS-----------------------------
@@ -172,17 +189,20 @@ amrex.fpe_trap_overflow = 1
 amrex.abort_on_out_of_gpu_memory=1
 amrex.the_arena_is_managed = 1
 
-peleLM.deltaT_verbose = 2
+peleLM.deltaT_verbose = 0
 peleLM.deltaT_crashIfFailing = 0
-nodal_proj.verbose = 1
-mac_proj.verbose   = 1
+nodal_proj.verbose = 0 
+mac_proj.verbose   = 0 
 # nodal_proj.atol = 1.0e-10
 # nodal_proj.rtol = 1.0e-10
 
+# mac_proj.atol = 1.0e-10
+# mac_proj.rtol = 1.0e-10
+
 # #------------------- HYPRE ---------------------
 # nodal_proj.mg_max_coarsening_level = 0
-# nodal_proj.m_mac_mg_atol = 1.0e-10
-# nodal_proj.m_mac_mg_rtol = 1.0e-10
+# # nodal_proj.m_mac_mg_atol = 1.0e-10
+# # nodal_proj.m_mac_mg_rtol = 1.0e-10
 # 
 # nodal_proj.bottom_solver = "hypre"
 # nodal_proj.hypre_namespace = nodal_proj.hypre

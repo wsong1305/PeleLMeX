@@ -20,7 +20,7 @@ USE_EB          = TRUE
 COMP            = gnu
 USE_MPI         = TRUE
 USE_OMP         = FALSE
-USE_CUDA        = FALSE
+USE_CUDA        = TRUE
 USE_HIP         = FALSE
 
 # PeleLMeX
@@ -28,8 +28,8 @@ USE_EFIELD      = FALSE
 USE_HYPRE       = FALSE
 
 # PelePhysics
-Chemistry_Model = heptane_fc
-# Chemistry_Model = ARLMech-HC-F24
+# Chemistry_Model = heptane_fc
+Chemistry_Model = ARLMech-HC-F24
 Eos_Model       = Fuego
 Transport_Model = Simple
 

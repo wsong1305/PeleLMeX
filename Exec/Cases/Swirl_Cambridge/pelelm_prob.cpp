@@ -13,8 +13,8 @@ void PeleLM::readProbParm()
 
 
    PeleLM::prob_parm->bathID = N2_ID;  
-   PeleLM::prob_parm->fuelID = NXC7H16_ID;  
-   //PeleLM::prob_parm->fuelID = NC7H16_ID;  
+   // PeleLM::prob_parm->fuelID = NXC7H16_ID;  
+   PeleLM::prob_parm->fuelID = POSF10325_ID;  
    PeleLM::prob_parm->oxidID = O2_ID; 
 
    PeleLM::pmf_data.initialize();
