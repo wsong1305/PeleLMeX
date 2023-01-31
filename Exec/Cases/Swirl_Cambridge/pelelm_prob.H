@@ -209,9 +209,11 @@ bcnormal(
       vel_swirler_y = -vel_swirler_y;
     }
 
-    s_ext[VELX] = vel_swirler_x;
-    s_ext[VELY] = vel_swirler_y;
-    s_ext[VELZ] = vel_swirler_z;
+    // multiplied by 1.9 to increase bulk velocity to approx. 16 m/s
+    // adding velocity components to the velocity fluctuation
+    s_ext[VELX] += vel_swirler_x*1.9;
+    s_ext[VELY] += vel_swirler_y*1.9;
+    s_ext[VELZ] += vel_swirler_z*1.9;
 
     if(time < 3.0e-3){
       s_ext[TEMP] = 1800.;
