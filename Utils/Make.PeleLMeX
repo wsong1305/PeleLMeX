@@ -50,6 +50,7 @@ ifeq ($(USE_SOOT), TRUE)
    LMdirs += Source/Soot
 endif
 
+
 Bpack += $(foreach dir, $(LMdirs), $(PELELMEX_HOME)/$(dir)/Make.package)
 Blocs += $(foreach dir, $(LMdirs), $(PELELMEX_HOME)/$(dir))
 
@@ -86,7 +87,13 @@ ifeq ($(PELE_USE_KLU), TRUE)
   DEFINES += -DPELE_USE_KLU
 endif
 
-ChemDir  = Support/Fuego/Mechanism/Models/$(Chemistry_Model)
+PELE_COMPILE_AJACOBIAN ?= TRUE
+
+ifeq ($(PELE_COMPILE_AJACOBIAN), TRUE)
+  DEFINES += -DPELE_COMPILE_AJACOBIAN
+endif
+
+ChemDir  = Support/Mechanism/Models/$(Chemistry_Model)
 
 PPdirs  := Utility/PMF Utility/TurbInflow Utility/PltFileManager Source $(ChemDir) Reactions Eos Transport
 
@@ -177,12 +184,12 @@ print-%::
 #---------------
 TPL:
 	@echo "==> Building SUNDIALS library"
-	@cd $(PELE_PHYSICS_HOME)/ThirdParty && $(MAKE) $(MAKEFLAGS) sundials AMREX_HOME=$(AMREX_HOME) USE_CUDA=$(USE_CUDA) USE_HIP=$(USE_HIP) PELE_USE_MAGMA=$(PELE_USE_MAGMA) PELE_USE_KLU=$(PELE_USE_KLU) DEBUG=$(DEBUG) COMP=$(HOSTCC) NVCC=$(COMP)
+	@cd $(PELE_PHYSICS_HOME)/ThirdParty && $(MAKE) $(MAKEFLAGS) sundials AMREX_HOME=$(AMREX_HOME) USE_CUDA=$(USE_CUDA) USE_HIP=$(USE_HIP) USE_SYCL=$(USE_SYCL) PELE_USE_MAGMA=$(PELE_USE_MAGMA) PELE_USE_KLU=$(PELE_USE_KLU) DEBUG=$(DEBUG) COMP=$(HOSTCC) NVCC=$(COMP)
 
 TPLclean:
 	@echo "==> Removing SUNDIALS library"
-	cd $(PELE_PHYSICS_HOME)/ThirdParty; $(MAKE) $(MAKEFLAGS) AMREX_HOME=$(AMREX_HOME) USE_CUDA=$(USE_CUDA) USE_HIP=$(USE_HIP) PELE_USE_KLU=$(PELE_USE_KLU) PELE_USE_MAGMA=$(PELE_USE_MAGMA) DEBUG=$(DEBUG) COMP=$(HOSTCC) NVCC=$(COMP) clean
+	cd $(PELE_PHYSICS_HOME)/ThirdParty; $(MAKE) $(MAKEFLAGS) AMREX_HOME=$(AMREX_HOME) USE_CUDA=$(USE_CUDA) USE_HIP=$(USE_HIP) USE_SYCL=$(USE_SYCL) PELE_USE_KLU=$(PELE_USE_KLU) PELE_USE_MAGMA=$(PELE_USE_MAGMA) DEBUG=$(DEBUG) COMP=$(HOSTCC) NVCC=$(COMP) clean
 
 TPLrealclean:
 	@echo "==> Removing SUNDIALS library"
-	cd $(PELE_PHYSICS_HOME)/ThirdParty; $(MAKE) $(MAKEFLAGS) AMREX_HOME=$(AMREX_HOME) USE_CUDA=$(USE_CUDA) USE_HIP=$(USE_HIP) PELE_USE_KLU=$(PELE_USE_KLU) PELE_USE_MAGMA=$(PELE_USE_MAGMA) DEBUG=$(DEBUG) COMP=$(HOSTCC) NVCC=$(COMP) realclean
+	cd $(PELE_PHYSICS_HOME)/ThirdParty; $(MAKE) $(MAKEFLAGS) AMREX_HOME=$(AMREX_HOME) USE_CUDA=$(USE_CUDA) USE_HIP=$(USE_HIP) USE_SYCL=$(USE_SYCL) PELE_USE_KLU=$(PELE_USE_KLU) PELE_USE_MAGMA=$(PELE_USE_MAGMA) DEBUG=$(DEBUG) COMP=$(HOSTCC) NVCC=$(COMP) realclean

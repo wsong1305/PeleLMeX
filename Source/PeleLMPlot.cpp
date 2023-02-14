@@ -122,6 +122,10 @@ void PeleLM::WritePlotFile() {
    }
 #endif
 
+   if (m_do_les && m_plot_les) {
+     ncomp += 1;
+   }
+
    //----------------------------------------------------------------
    // Plot MultiFabs
    Vector<MultiFab> mf_plt(finest_level + 1);
@@ -222,6 +226,9 @@ void PeleLM::WritePlotFile() {
    }
 #endif
 
+   if (m_do_les && m_plot_les) {
+     plt_VarsName.push_back("viscturb");
+   }
 
    //----------------------------------------------------------------
    // Fill the plot MultiFabs
@@ -304,8 +311,28 @@ void PeleLM::WritePlotFile() {
 #ifdef PELE_USE_EFIELD
       if (m_do_extraEFdiags) {
           MultiFab::Copy(mf_plt[lev], *m_ionsFluxes[lev], 0, cnt, m_ionsFluxes[lev]->nComp(),0);
+          cnt += m_ionsFluxes[lev]->nComp();
       }
 #endif
+
+      if (m_do_les && m_plot_les) {
+        constexpr amrex::Real fact = 0.5/AMREX_SPACEDIM;
+        auto const& plot_arr = mf_plt[lev].arrays();
+        AMREX_D_TERM(auto const& mut_arr_x = m_leveldata_old[lev]->visc_turb_fc[0].const_arrays();,
+                     auto const& mut_arr_y = m_leveldata_old[lev]->visc_turb_fc[1].const_arrays();,
+                     auto const& mut_arr_z = m_leveldata_old[lev]->visc_turb_fc[2].const_arrays();)
+        // interpolate turbulent viscosity from faces to centers
+        amrex::ParallelFor(mf_plt[lev], [plot_arr, fact, AMREX_D_DECL(mut_arr_x, mut_arr_y, mut_arr_z), cnt]
+                           AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
+                           {
+                             plot_arr[box_no](i,j,k,cnt) = fact*( AMREX_D_TERM( mut_arr_x[box_no](i,j,k) + mut_arr_x[box_no](i+1,j,k),
+                                                                                + mut_arr_y[box_no](i,j,k) + mut_arr_y[box_no](i,j+1,k),
+                                                                                + mut_arr_z[box_no](i,j,k) + mut_arr_z[box_no](i,j,k+1)));
+                           });
+        Gpu::streamSynchronize();
+        cnt += 1;
+      }
+
 #ifdef AMREX_USE_EB
       EB_set_covered(mf_plt[lev],0.0);
 #endif
@@ -364,7 +391,7 @@ void PeleLM::WriteHeader(const std::string& name, bool is_checkpoint) const
         }
 
         HeaderFile << finest_level << "\n";
-        
+
         HeaderFile << m_nstep << "\n";
 
 #ifdef AMREX_USE_EB
@@ -506,7 +533,7 @@ void PeleLM::ReadCheckPointFile()
       is >> m_cur_time;
       GotoNextLine(is);
    }
-#else 
+#else
 
    // Current time
    is >> m_cur_time;
@@ -648,10 +675,10 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
 
    amrex::Print() << " initData on level " << a_lev << " from pltfile " << a_dataPltFile << "\n";
    if(pltfileSource == "LM"){
-     amrex::Print() << " Assuming pltfile was generated in LM/LMeX \n"; 
+     amrex::Print() << " Assuming pltfile was generated in LM/LMeX \n";
    }
    else if(pltfileSource == "C"){
-     amrex::Print() << " Assuming pltfile was generated in PeleC \n"; 
+     amrex::Print() << " Assuming pltfile was generated in PeleC \n";
    }
 
    // Use PelePhysics PltFileManager
@@ -663,21 +690,21 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
    pele::physics::eos::speciesNames<pele::physics::PhysicsType::eos_type>(spec_names);
    int idT = -1, idV = -1, idY = -1, nSpecPlt = 0;
 #ifdef PELE_USE_EFIELD
-   int inE = -1, iPhiV = -1; 
+   int inE = -1, iPhiV = -1;
 #endif
 #ifdef PELELM_USE_SOOT
    int inSoot = -1;
 #endif
    for (int i = 0; i < plt_vars.size(); ++i) {
       std::string firstChars = plt_vars[i].substr(0, 2);
-      
+
       if(pltfileSource == "LM"){
-        if (plt_vars[i] == "temp")            idT = i; 
+        if (plt_vars[i] == "temp")            idT = i;
       }
       else if(pltfileSource == "C"){
-        if (plt_vars[i] == "Temp")            idT = i; 
+        if (plt_vars[i] == "Temp")            idT = i;
       }
-      if (plt_vars[i] == "x_velocity")      idV = i; 
+      if (plt_vars[i] == "x_velocity")      idV = i;
       if (firstChars == "Y(" && idY < 0 ) {  // species might not be ordered in the order of the current mech.
          idY = i;
       }

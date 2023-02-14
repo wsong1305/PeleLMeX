@@ -67,17 +67,17 @@ class PeleLM : public amrex::AmrCore {
                        amrex::Real time,
                        bool initial = false) override;
 
-   virtual void MakeNewLevelFromScratch( int lev, 
+   virtual void MakeNewLevelFromScratch( int lev,
                                                amrex::Real time,
                                          const amrex::BoxArray& ba,
                                          const amrex::DistributionMapping& dm) override;
 
-   virtual void ErrorEst( int lev, 
+   virtual void ErrorEst( int lev,
                           amrex::TagBoxArray& tags,
                           amrex::Real time,
                           int ng) override;
 
-   virtual void MakeNewLevelFromCoarse( int lev, 
+   virtual void MakeNewLevelFromCoarse( int lev,
                                               amrex::Real time,
                                         const amrex::BoxArray& ba,
                                         const amrex::DistributionMapping& dm) override;
@@ -146,8 +146,8 @@ class PeleLM : public amrex::AmrCore {
       LevelData (amrex::BoxArray const& ba,
                  amrex::DistributionMapping const& dm,
                  amrex::FabFactory<amrex::FArrayBox> const& factory,
-                 int a_incompressible, int a_has_divu, 
-                 int a_nAux, int a_nGrowState);
+                 int a_incompressible, int a_has_divu,
+                 int a_nAux, int a_nGrowState, int a_use_soret, int a_do_les);
 
       // cell-centered state multifabs
       amrex::MultiFab state;           // Stqte data: velocity, density, rhoYs, rhoH, Temp, RhoRT
@@ -160,6 +160,8 @@ class PeleLM : public amrex::AmrCore {
 
       // cell-centered transport multifabs
       amrex::MultiFab visc_cc;         // Viscosity (dim:1)
+      amrex::Array<amrex::MultiFab, AMREX_SPACEDIM> visc_turb_fc;    // Turbulent Viscosity (dim:)
+      amrex::Array<amrex::MultiFab, AMREX_SPACEDIM> lambda_turb_fc;    // Turbulent thermal conductivity (dim:)
       amrex::MultiFab diff_cc;         // Diffusivity (dim:NUM_SPECIES+2)
 #ifdef PELE_USE_EFIELD
       amrex::MultiFab diffE_cc;        // Electron diffusivity (dim:1)
@@ -190,7 +192,7 @@ class PeleLM : public amrex::AmrCore {
                        const amrex::Vector<amrex::DistributionMapping> &dm,
                        const amrex::Vector<std::unique_ptr<amrex::FabFactory<amrex::FArrayBox>>> &factory,
                        int a_nGrowAdv,
-                       int a_use_wbar,
+                       int a_use_wbar, int a_use_soret,
                        int is_init = 0);
       amrex::Vector<amrex::MultiFab> Dn;           // Diffusion term t^n
       amrex::Vector<amrex::MultiFab> Dnp1;         // Diffusion term t^(n+1,k)
@@ -198,6 +200,8 @@ class PeleLM : public amrex::AmrCore {
 
       amrex::Vector<amrex::MultiFab> Dwbar;        // Diffusion term of Wbar
       amrex::Vector<amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>> wbar_fluxes;     // Wbar flux correction
+      amrex::Vector<amrex::MultiFab> DT;        // Diffusion term of T (soret flux)
+      amrex::Vector<amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>> soret_fluxes;     // Soret flux correction
    };
    struct AdvanceAdvData {
       AdvanceAdvData () = default;
@@ -277,7 +281,7 @@ class PeleLM : public amrex::AmrCore {
    // MAC PROJECTION
 
    void resetMacProjector();
-   
+
    // Predict face velocity using Godunov
    void predictVelocity(std::unique_ptr<AdvanceAdvData> &advData);
 
@@ -313,18 +317,21 @@ class PeleLM : public amrex::AmrCore {
 
    // compute cell-centered diffusivity (stored in LevelData)
    void calcViscosity(const PeleLM::TimeStamp &a_time);
+   void calcTurbViscosity(const PeleLM::TimeStamp &a_time);
    void calcDiffusivity(const PeleLM::TimeStamp &a_time);
-   
+
    // get edge-centered diffusivity on a per level / per comp basis
    amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>
    getDiffusivity(int lev, int beta_comp, int ncomp, int doZeroVisc,
                   amrex::Vector<amrex::BCRec> a_bcrec,
-                  const amrex::MultiFab &a_diff_cc);
+                  const amrex::MultiFab &a_diff_cc,
+                  int addTurbContrib = 0);
 
    // get species/enthalpy differential diffusion fluxes
    void computeDifferentialDiffusionFluxes(const PeleLM::TimeStamp &a_time,
                                            const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_fluxes,
-                                           const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_wbarfluxes);
+                                           const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_wbarfluxes,
+                                           const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_soretfluxes);
 
    // get species/enthalpy differential diffusion terms
    void computeDifferentialDiffusionTerms(const PeleLM::TimeStamp &a_time,
@@ -333,19 +340,27 @@ class PeleLM : public amrex::AmrCore {
 
    // add wbar term to the species fluxes
    void addWbarTerm(const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_fluxes,
-                    const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_wbarfluxes, 
+                    const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_wbarfluxes,
                     amrex::Vector<amrex::MultiFab const*> const &a_spec,
                     amrex::Vector<amrex::MultiFab const*> const &a_rho,
                     amrex::Vector<amrex::MultiFab const*> const &a_beta);
 
-   // Ensure sum of specues diffusion fluxes sum to 0
+  // add soret term to the species flux
+   void addSoretTerm(const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_fluxes,
+                    const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_soretfluxes,
+                    amrex::Vector<amrex::MultiFab const*> const &a_spec,
+                    amrex::Vector<amrex::MultiFab const*> const &a_rho,
+                    amrex::Vector<amrex::MultiFab const*> const &a_temp,
+                    amrex::Vector<amrex::MultiFab const*> const &a_beta);
+
+  // Ensure sum of specues diffusion fluxes sum to 0
    void adjustSpeciesFluxes(const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_fluxes,
                             amrex::Vector<amrex::MultiFab const*> const &a_spec);
 
    // Compute enthalpy flux due to species diffusion
    void computeSpeciesEnthalpyFlux(const amrex::Vector<amrex::Array<amrex::MultiFab*,AMREX_SPACEDIM>> &a_fluxes,
                                    amrex::Vector<amrex::MultiFab const*> const &a_temp);
-                    
+
    void differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advData,
                                     std::unique_ptr<AdvanceDiffData> &diffData);
 
@@ -419,7 +434,7 @@ class PeleLM : public amrex::AmrCore {
                      const amrex::Vector<amrex::MultiFab*> &a_velForce,
                      int nGrowForce,
                      int add_gradP);
-   
+
    void getVelForces(const TimeStamp &a_time,
                      int lev,
                      amrex::MultiFab* a_divTau,
@@ -725,7 +740,7 @@ class PeleLM : public amrex::AmrCore {
    // Typical values
    void setTypicalValues(const PeleLM::TimeStamp &a_time, int is_init = 0);
    void updateTypicalValuesChem();
-    
+
    void checkMemory(const std::string &a_message);
 
    // Mixture fraction & Progress variable
@@ -773,14 +788,14 @@ class PeleLM : public amrex::AmrCore {
 
 
    void getEBDistance(int a_lev,
-                      amrex::MultiFab &a_signDistLev); 
+                      amrex::MultiFab &a_signDistLev);
 
    void extendSignedDistance( amrex::MultiFab *a_signDist,
                               amrex::Real a_extendFactor);
 
    // static_cast factory into ebfactory
-   amrex::EBFArrayBoxFactory const& 
-   EBFactory (int lev) const noexcept { 
+   amrex::EBFArrayBoxFactory const&
+   EBFactory (int lev) const noexcept {
       return static_cast<amrex::EBFArrayBoxFactory const&>(*m_factory[lev]);
    }
 
@@ -794,10 +809,10 @@ class PeleLM : public amrex::AmrCore {
 
    void advanceSetup();
 
-   void oneSDC(int sdcIter, 
+   void oneSDC(int sdcIter,
                std::unique_ptr<AdvanceAdvData> &advData,
                std::unique_ptr<AdvanceDiffData> &diffData);
-   
+
    void copyTransportOldToNew();
    void copyStateNewToOld(int nGhost = 0);
    void copyPressNewToOld();
@@ -888,7 +903,7 @@ class PeleLM : public amrex::AmrCore {
 
    int testExitNewton(int newtonIter,
                       const amrex::Real &max_res,
-                      const amrex::Real &norm_newtonDir); 
+                      const amrex::Real &norm_newtonDir);
 
    void updateNLState(const amrex::Vector<amrex::MultiFab*> &a_update);
 
@@ -1068,7 +1083,7 @@ class PeleLM : public amrex::AmrCore {
    pele::physics::turbinflow::TurbInflow turb_inflow;
 
    // Diagnostics
-   amrex::Vector<std::unique_ptr<DiagBase>> m_diagnostics; 
+   amrex::Vector<std::unique_ptr<DiagBase>> m_diagnostics;
 
    // Linear solvers
    std::unique_ptr<DiffusionOp> m_diffusion_op;
@@ -1095,6 +1110,7 @@ class PeleLM : public amrex::AmrCore {
    amrex::Real m_plot_per_approx = -1.;
    amrex::Real m_plot_per_exact = -1.;
    int m_check_int = 0;
+   amrex::Real m_check_per = -1.;
    int m_message_int = 10;
    int m_evaluatePlotVarCount = 0;
    int m_plot_grad_p = 1;
@@ -1117,7 +1133,9 @@ class PeleLM : public amrex::AmrCore {
    amrex::Real m_dtChangeMax  = 1.1;
    amrex::Real m_stop_time    = -1.0;
    amrex::Real m_max_dt       = 1e12;
-   int m_nstep = -1; 
+   amrex::Real m_wall_start   = 0.0;
+   amrex::Real m_max_wall_time = -1.0;
+   int m_nstep = -1;
    int m_max_step = -1;
 
    int m_regrid_int = -1;
@@ -1139,7 +1157,7 @@ class PeleLM : public amrex::AmrCore {
    // DivU dt
    int m_divu_checkFlag = 1;
    amrex::Real m_divu_dtFactor = 0.5;
-   amrex::Real m_divu_rhoMin = 0.1;  
+   amrex::Real m_divu_rhoMin = 0.1;
 
    // Aux data size
    int m_nAux = 0;
@@ -1150,8 +1168,22 @@ class PeleLM : public amrex::AmrCore {
    // cc->ec average
    int m_harm_avg_cen2edge = 0;
 
-   // wbar diffusion term
+   // Diffusion
+   int m_unity_Le = 0;
+   amrex::Real m_Schmidt_inv = 1.0/0.7;
+   amrex::Real m_Prandtl_inv = 1.0/0.7;
    int m_use_wbar = 1;
+   int m_use_soret = 0;
+
+   // LES Model
+   bool m_do_les = false;
+   bool m_plot_les = false;
+   int m_les_verbose = 0;
+   std::string m_les_model = "None";
+   amrex::Real m_les_cs_smag = 0.18;
+   amrex::Real m_les_cm_wale = 0.60;
+   amrex::Real m_les_cs_sigma = 1.35;
+   amrex::Vector<amrex::Real> m_turb_visc_time;
 
    // switch on/off different processes
    // TODO: actually implement that
@@ -1207,7 +1239,7 @@ class PeleLM : public amrex::AmrCore {
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM> m_domainRhoHFlux;
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM*NUM_SPECIES> m_domainRhoYFlux;
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM> m_domainUmacFlux;
-   
+
    std::ofstream tmpStateFile;
    std::ofstream tmpExtremasFile;
    std::ofstream tmpMassFile;
@@ -1279,7 +1311,7 @@ class PeleLM : public amrex::AmrCore {
 
    // Nodal projection
    int m_nodal_mg_max_coarsening_level = 100;
-   amrex::Real m_nodal_mg_rtol = 1.0e-11;   
+   amrex::Real m_nodal_mg_rtol = 1.0e-11;
    amrex::Real m_nodal_mg_atol = 1.0e-14;
    std::string m_hypre_namespace_nodal = "nodal_hypre";
 
@@ -1287,7 +1319,7 @@ class PeleLM : public amrex::AmrCore {
    int m_mac_mg_verbose = 0;
    int m_mac_mg_max_coarsening_level = 100;
    int m_mac_max_order = 4;
-   amrex::Real m_mac_mg_rtol = 1.0e-11;   
+   amrex::Real m_mac_mg_rtol = 1.0e-11;
    amrex::Real m_mac_mg_atol = 1.0e-14;
    std::string m_hypre_namespace_mac = "mac_hypre";
    //-----------------------------------------------------------------------------

@@ -54,10 +54,10 @@ void PeleLM::MakeNewLevelFromScratch( int lev,
    // Initialize the LevelData
    m_leveldata_old[lev].reset(new LevelData(grids[lev], dmap[lev], *m_factory[lev],
                                             m_incompressible, m_has_divu,
-                                            m_nAux, m_nGrowState));
+                                            m_nAux, m_nGrowState, m_use_soret, m_do_les));
    m_leveldata_new[lev].reset(new LevelData(grids[lev], dmap[lev], *m_factory[lev],
                                             m_incompressible, m_has_divu,
-                                            m_nAux, m_nGrowState));
+                                            m_nAux, m_nGrowState, m_use_soret, m_do_les));
 
    if (max_level > 0 && lev != max_level) {
       m_coveredMask[lev].reset(new iMultiFab(grids[lev], dmap[lev], 1, 0));
@@ -209,11 +209,11 @@ void PeleLM::initData() {
             // Light version of the diffusion data container
             std::unique_ptr<AdvanceDiffData> diffData;
             diffData.reset(new AdvanceDiffData(finest_level, grids, dmap, m_factory,
-                           m_nGrowAdv, m_use_wbar, is_initialization));
+                           m_nGrowAdv, m_use_wbar, m_use_soret, is_initialization));
             calcDivU(is_initialization,computeDiffusionTerm,do_avgDown,AmrNewTime,diffData);
          }
          initialProjection();
-     
+
          // If gravity is used, do initial pressure projection to get the hydrostatic pressure
          if (std::abs(m_gravity.sum()) > 0.0) {
             initialPressProjection();
@@ -258,13 +258,13 @@ void PeleLM::initData() {
                // Light version of the diffusion data container
                std::unique_ptr<AdvanceDiffData> diffData;
                diffData.reset(new AdvanceDiffData(finest_level, grids, dmap, m_factory,
-                              m_nGrowAdv, m_use_wbar, is_initialization));
+                          m_nGrowAdv, m_use_wbar, m_use_soret, is_initialization));
                calcDivU(is_initialization,computeDiffusionTerm,do_avgDown,AmrNewTime,diffData);
             }
 
             initialProjection();
          }
-         
+
          if ( m_numDivuIter == 0 && m_do_react ) {
             for (int lev = 0; lev <= finest_level; ++lev) {
                auto ldataR_p   = getLevelDataReactPtr(lev);
@@ -297,7 +297,7 @@ void PeleLM::initData() {
       if (m_plot_int > 0 || m_plot_per_approx > 0. || m_plot_per_exact > 0.) {
          WritePlotFile();
       }
-      if (m_check_int > 0 ) {
+      if (m_check_int > 0 || m_check_per > 0.) {
          WriteCheckPointFile();
       }
 

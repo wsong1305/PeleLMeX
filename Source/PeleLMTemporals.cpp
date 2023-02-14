@@ -113,7 +113,7 @@ void PeleLM::addMassFluxes(const Array<const MultiFab*,AMREX_SPACEDIM> &a_fluxes
 #if ( AMREX_SPACEDIM == 2 )
       if (geom[0].IsRZ()) {
          MultiFab mf_a;
-         geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0); 
+         geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0);
          auto const& ama = mf_a.const_arrays();
          auto r = amrex::ParReduce(TypeList<ReduceOpSum,ReduceOpSum>{}, TypeList<Real,Real>{},
                                    *a_fluxes[idim],IntVect(0),
@@ -208,7 +208,7 @@ void PeleLM::addUmacFluxes(std::unique_ptr<AdvanceAdvData> &advData, const Geome
 #if ( AMREX_SPACEDIM == 2 )
       if (geom[0].IsRZ()) {
          MultiFab mf_a;
-         geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0); 
+         geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0);
          auto const& ama = mf_a.const_arrays();
          auto r = amrex::ParReduce(TypeList<ReduceOpSum,ReduceOpSum>{}, TypeList<Real,Real>{},
                                    advData->umac[lev][idim],IntVect(0),
@@ -315,7 +315,7 @@ void PeleLM::addRhoHFluxes(const Array<const MultiFab*,AMREX_SPACEDIM> &a_fluxes
 #if ( AMREX_SPACEDIM == 2 )
       if (geom[0].IsRZ()) {
          MultiFab mf_a;
-         geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0); 
+         geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0);
          auto const& ama = mf_a.const_arrays();
          auto r = amrex::ParReduce(TypeList<ReduceOpSum,ReduceOpSum>{}, TypeList<Real,Real>{},
                                    *a_fluxes[idim],IntVect(0),
@@ -409,7 +409,7 @@ void PeleLM::addRhoYFluxes(const Array<const MultiFab*,AMREX_SPACEDIM> &a_fluxes
 #if ( AMREX_SPACEDIM == 2 )
          if (geom[0].IsRZ()) {
             MultiFab mf_a;
-            geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0); 
+            geom[0].GetFaceArea(mf_a, grids[0], dmap[0], idim, 0);
             auto const& ama = mf_a.const_arrays();
             auto r = amrex::ParReduce(TypeList<ReduceOpSum,ReduceOpSum>{}, TypeList<Real,Real>{},
                                       *a_fluxes[idim],IntVect(0),
@@ -496,7 +496,7 @@ void PeleLM::writeTemporals()
    // Combustion
    Real fuelConsumptionInt = 0.0;
    Real heatReleaseRateInt = 0.0;
-   if (fuelID > 0 && !(m_chem_integrator == "ReactorNull")) {
+   if (fuelID >= 0 && !(m_chem_integrator == "ReactorNull")) {
        fuelConsumptionInt =  MFSum(GetVecOfConstPtrs(getIRVect()),fuelID);
        for (int lev = 0; lev <= finest_level; ++lev) {
           getHeatRelease(lev, kinEnergy[lev].get());  // Re-use kinEnergy container
