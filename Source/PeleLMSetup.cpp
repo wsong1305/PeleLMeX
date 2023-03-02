@@ -858,6 +858,9 @@ void PeleLM::derivedSetup()
 
    }
 
+   // Distribution Map
+   derive_lst.add("DistributionMap",IndexType::TheCellType(),1,pelelm_derdmap,the_same_box);
+
    // Cell average pressure
    derive_lst.add("avg_pressure",IndexType::TheCellType(),1,pelelm_deravgpress,the_same_box);
 
