@@ -151,6 +151,9 @@ The following list of derived variables are available in PeleLMeX:
     * - `coordinates`
       - AMREX_SPACEDIM
       - Cell-center coordinates
+    * - `DistributionMap`
+      - 1
+      - The MPI-rank of each box
 
 Note that `mixture_fraction` and `progress_variable` requires additional inputs from the users as described below.
 
