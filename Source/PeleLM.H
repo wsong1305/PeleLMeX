@@ -1,29 +1,32 @@
 #ifndef _PeleLM_H_
 #define _PeleLM_H_
 
+#include "PeleLMUserKeys.H"
+#include "PeleLM_Index.H"
+#include "PeleLMDerive.H"
+#include "pelelm_prob_parm.H"
+#include "DiffusionOp.H"
+#include "DiagBase.H"
+#ifdef PELE_USE_EFIELD
+#include "PrecondOp.H"
+#endif
+
+// PelePhysics lib
+#include <mechanism.H>
+#include <PelePhysics.H>
+#include <PMFData.H>
+#include <turbinflow.H>
+#include <ReactorBase.H>
+
 #include <AMReX_AmrCore.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_BC_TYPES.H>
-#include <hydro_MacProjector.H>
-#include <hydro_NodalProjector.H>
 #include <AMReX_ErrorList.H>
 #include <AMReX_VisMF.H>
+
+#include <hydro_MacProjector.H>
+#include <hydro_NodalProjector.H>
 #include <hydro_godunov_ppm.H>
-
-#include <mechanism.H>
-#include "PelePhysics.H"
-#include "PMFData.H"
-#include "turbinflow.H"
-#include "ReactorBase.H"
-#include <PeleLM_Index.H>
-#include <PeleLMDerive.H>
-#include <pelelm_prob_parm.H>
-#include <DiffusionOp.H>
-#include <DiagBase.H>
-
-#ifdef PELE_USE_EFIELD
-#include <PrecondOp.H>
-#endif
 
 // Forward declarations
 #ifdef PELELM_USE_SPRAY
@@ -43,7 +46,7 @@ class PeleLM : public amrex::AmrCore {
    // constructor
    PeleLM();
 
-   //destructor
+   // destructor
    virtual ~PeleLM();
 
    // Setup function
@@ -103,8 +106,8 @@ class PeleLM : public amrex::AmrCore {
    void readProbParm();
 
    // ReadGridFile
-  void readGridFile(std::string grid_file,
-                    amrex::Vector<amrex::BoxArray>& input_ba);
+   void readGridFile(std::string grid_file,
+                     amrex::Vector<amrex::BoxArray>& input_ba);
 
 #ifdef PELELM_USE_SPRAY
    // ReadSprayParameters
@@ -146,7 +149,7 @@ class PeleLM : public amrex::AmrCore {
       LevelData (amrex::BoxArray const& ba,
                  amrex::DistributionMapping const& dm,
                  amrex::FabFactory<amrex::FArrayBox> const& factory,
-                 int a_incompressible, int a_has_divu,
+                 int a_solver, int a_has_divu,
                  int a_nAux, int a_nGrowState, int a_use_soret, int a_do_les);
 
       // cell-centered state multifabs
@@ -209,7 +212,7 @@ class PeleLM : public amrex::AmrCore {
                       const amrex::Vector<amrex::BoxArray> &ba,
                       const amrex::Vector<amrex::DistributionMapping> &dm,
                       const amrex::Vector<std::unique_ptr<amrex::FabFactory<amrex::FArrayBox>>> &factory,
-                      int a_incompressible,
+                      int a_solver,
                       int a_nGrowAdv,
                       int a_nGrowMAC);
       amrex::Vector<amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>> umac;        // MAC face velocity
@@ -246,6 +249,9 @@ class PeleLM : public amrex::AmrCore {
 
    // checkRunParams
    void checkRunParams();
+
+   void computeCosts(int a_lev);
+   void computeCosts(int a_lev, amrex::LayoutData<amrex::Real> &a_costs);
 
    //-----------------------------------------------------------------------------
 
@@ -613,6 +619,7 @@ class PeleLM : public amrex::AmrCore {
    void fillpatch_gradp(int lev, amrex::Real a_time, amrex::MultiFab& a_gp, int nGhost);
    void fillpatch_reaction(int lev, amrex::Real a_time, amrex::MultiFab& a_I_R, int nGhost);
    void fillpatch_forces(amrex::Real a_time, amrex::Vector<amrex::MultiFab*> const &a_velForces, int nGrowForce);
+   void fillpatch_chemFunctCall(int lev, amrex::Real a_time, amrex::MultiFab& a_fctC, int nGhost);
 #ifdef PELE_USE_EFIELD
    void fillpatch_phiV(int lev, amrex::Real a_time, amrex::MultiFab& a_phiV, int phiV_comp, int nGhost);
    void fillPatchExtrap(amrex::Real a_time, amrex::Vector<amrex::MultiFab*> const &a_MF, int a_nGrow);
@@ -625,6 +632,7 @@ class PeleLM : public amrex::AmrCore {
    void fillcoarsepatch_divu(int lev, amrex::Real a_time, amrex::MultiFab& a_divu, int nGhost);
    void fillcoarsepatch_gradp(int lev, amrex::Real a_time, amrex::MultiFab& a_gp, int nGhost);
    void fillcoarsepatch_reaction(int lev, amrex::Real a_time, amrex::MultiFab& a_I_R, int nGhost);
+   void fillcoarsepatch_chemFunctCall(int lev, amrex::Real a_time, amrex::MultiFab& a_fctC, int nGhost);
 
    // Fill physical boundaries
    void setInflowBoundaryVel (amrex::MultiFab &a_vel, int lev, PeleLM::TimeStamp a_time);
@@ -1062,12 +1070,12 @@ class PeleLM : public amrex::AmrCore {
    amrex::Vector<amrex::BoxArray> m_regrid_ba;
 
    // Problem parameters
-   ProbParm* prob_parm;
-   ProbParm* prob_parm_d;
+   ProbParm* prob_parm = nullptr;
+   ProbParm* prob_parm_d = nullptr;
 
 #ifdef PELELM_USE_SOOT
    // Soot parameters
-   SootModel* soot_model;
+   SootModel* soot_model = nullptr;
    bool do_soot_solve;
 #endif
 
@@ -1089,14 +1097,6 @@ class PeleLM : public amrex::AmrCore {
    amrex::Vector<std::unique_ptr<DiagBase>> m_diagnostics;
    amrex::Vector<std::string> m_diagVars;
 
-   // Linear solvers
-   std::unique_ptr<DiffusionOp> m_diffusion_op;
-   std::unique_ptr<DiffusionOp> m_mcdiffusion_op;
-   std::unique_ptr<DiffusionTensorOp> m_diffusionTensor_op;
-   std::unique_ptr<Hydro::MacProjector> macproj;
-   int m_macProjNeedReset = 0;
-   int m_macProjOldSize = 0;
-
    int m_verbose = 0;
 
    // IO options
@@ -1107,138 +1107,148 @@ class PeleLM : public amrex::AmrCore {
    std::string m_check_file{"chk"};
    int m_derivePlotVarCount = 0;
    amrex::Vector<std::string> m_derivePlotVars;
-   int m_plotChemDiag = 0;
-   int m_plotHeatRelease = 0;
-   int m_plotStateSpec = 0;
-   int m_plot_int = 0;
-   amrex::Real m_plot_per_approx = -1.;
-   amrex::Real m_plot_per_exact = -1.;
-   int m_check_int = 0;
-   amrex::Real m_check_per = -1.;
-   int m_message_int = 10;
-   int m_evaluatePlotVarCount = 0;
-   int m_plot_grad_p = 1;
-   int m_ioDigits = 5;
+   int m_plotChemDiag {0};
+   int m_plotHeatRelease {0};
+   int m_plotStateSpec {0};
+   int m_plot_int {0};
+   amrex::Real m_plot_per_approx {-1.};
+   amrex::Real m_plot_per_exact {-1.};
+   int m_check_int {0};
+   amrex::Real m_check_per {-1.};
+   int m_message_int {10};
+   int m_evaluatePlotVarCount {0};
+   int m_plot_grad_p {1};
+   int m_ioDigits {5};
    amrex::Vector<std::string> m_evaluatePlotVars;
-   bool m_write_hdf5_pltfile = false;
+   bool m_write_hdf5_pltfile {false};
 
    //-----------------------------------------------------------------------------
    // ALGORITHM
 
    // Time & step
-   amrex::Real m_cur_time     = 0.0;
-   amrex::Real m_dt           = -1.0;
-   amrex::Real m_cfl          = 0.7;
-   amrex::Real m_fixed_dt     = -1.0;
-   amrex::Real m_init_dt      = -1.0;
-   amrex::Real m_min_dt       = 1.0e-12;
-   amrex::Real m_dtshrink     = 1.0;
-   amrex::Real m_prev_dt      = -1.0;
-   amrex::Real m_dtChangeMax  = 1.1;
-   amrex::Real m_stop_time    = -1.0;
-   amrex::Real m_max_dt       = 1e12;
-   amrex::Real m_wall_start   = 0.0;
-   amrex::Real m_max_wall_time = -1.0;
-   int m_nstep = -1;
-   int m_max_step = -1;
-
-   int m_regrid_int = -1;
+   amrex::Real m_cur_time {0.0};
+   amrex::Real m_dt {-1.0};
+   amrex::Real m_cfl {0.7};
+   amrex::Real m_fixed_dt {-1.0};
+   amrex::Real m_init_dt {-1.0};
+   amrex::Real m_min_dt {1.0e-12};
+   amrex::Real m_dtshrink {1.0};
+   amrex::Real m_prev_dt {-1.0};
+   amrex::Real m_dtChangeMax {1.1};
+   amrex::Real m_stop_time {-1.0};
+   amrex::Real m_max_dt {1e12};
+   amrex::Real m_wall_start {0.0};
+   amrex::Real m_max_wall_time {-1.0};
+   int m_nstep {-1};
+   int m_max_step {-1};
+   int m_regrid_int {-1};
 
    // Switch Evolve/Evaluate
-   std::string m_run_mode = "normal";
+   std::string m_run_mode {"normal"};
 
    // Incompressible ?
-   int m_incompressible = 0;
-   amrex::Real m_rho = -1.0;
-   amrex::Real m_mu  = -1.0;
+   int m_solver {PhysicSolver::LowMachNumber};
+   amrex::Real m_rho {-1.0};
+   amrex::Real m_mu {-1.0};
 
    amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> m_gravity{AMREX_D_DECL(0.0,0.0,0.0)};
    amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> m_background_gp{AMREX_D_DECL(0.0,0.0,0.0)};
 
    // DivU ? default ON when not incompressible
-   int m_has_divu = 1;
+   int m_has_divu {1};
 
    // DivU dt
-   int m_divu_checkFlag = 1;
-   amrex::Real m_divu_dtFactor = 0.5;
-   amrex::Real m_divu_rhoMin = 0.1;
+   int m_divu_checkFlag {1};
+   amrex::Real m_divu_dtFactor {0.5};
+   amrex::Real m_divu_rhoMin {0.1};
 
    // Aux data size
-   int m_nAux = 0;
+   int m_nAux {0};
 
    // R-z
-   int m_rz_correction = 0;
+   int m_rz_correction {0};
 
    // cc->ec average
-   int m_harm_avg_cen2edge = 0;
+   int m_harm_avg_cen2edge {0};
 
    // Diffusion
-   int m_unity_Le = 0;
-   amrex::Real m_Schmidt_inv = 1.0/0.7;
-   amrex::Real m_Prandtl_inv = 1.0/0.7;
-   int m_use_wbar = 1;
-   int m_use_soret = 0;
+   int m_unity_Le {0};
+   amrex::Real m_Schmidt_inv {1.0/0.7};
+   amrex::Real m_Prandtl_inv {1.0/0.7};
+   int m_use_wbar {1};
+   int m_use_soret {0};
 
    // LES Model
-   bool m_do_les = false;
-   bool m_plot_les = false;
-   int m_les_verbose = 0;
-   std::string m_les_model = "None";
-   amrex::Real m_les_cs_smag = 0.18;
-   amrex::Real m_les_cm_wale = 0.60;
-   amrex::Real m_les_cs_sigma = 1.35;
+   bool m_do_les {false};
+   bool m_plot_les {false};
+   int m_les_verbose {0};
+   std::string m_les_model {"None"};
+   amrex::Real m_les_cs_smag {0.18};
+   amrex::Real m_les_cm_wale {0.60};
+   amrex::Real m_les_cs_sigma {1.35};
    amrex::Vector<amrex::Real> m_turb_visc_time;
 
    // switch on/off different processes
    // TODO: actually implement that
-   int m_do_react = 1;
-   int m_do_diff = 1;
-   int m_do_adv = 1;
+   int m_do_react {1};
+   int m_do_diff {1};
+   int m_do_adv {1};
 
    // Misc.
-   int m_floor_species = 0;
-   int m_checkMem = 0;
+   int m_floor_species {0};
+
+   // Performances
+   int m_checkMem {0};
+   int m_doLoadBalance {0};
+   int m_loadBalanceCost {LoadBalanceCost::Ncell};
+   int m_loadBalanceMethod {LoadBalanceMethod::SFC};
+   int m_loadBalanceCostChem {LoadBalanceCost::ChemFunctCallMax};
+   int m_loadBalanceMethodChem {LoadBalanceMethod::Knapsack};
+   amrex::Real m_loadBalanceKSfactor {1.2};
+   amrex::Real m_loadBalanceEffRatioThreshold {1.1};
+   amrex::Vector<std::unique_ptr<amrex::LayoutData<amrex::Real> > > m_costs;
+   amrex::Vector<amrex::Real> m_loadBalanceEff;
 
    // SDC
-   int m_nSDCmax = 1;
-   int m_sdcIter = 0;
+   int m_nSDCmax {1};
+   int m_sdcIter {0};
 
    // DeltaT iterations
-   int m_deltaT_verbose = 0;
-   int m_deltaTIterMax = 10;
-   amrex::Real m_deltaT_norm_max = 1.0e-10;
-   int m_crashOnDeltaTFail = 1;
+   int m_deltaT_verbose {0};
+   int m_deltaTIterMax {10};
+   amrex::Real m_deltaT_norm_max {1.0e-10};
+   int m_crashOnDeltaTFail {1};
 
    // Pressure
-   amrex::Real m_dpdtFactor = 1.0;
-   amrex::Real m_pOld = -1.0;
-   amrex::Real m_pNew = -1.0;
-   amrex::Real m_dp0dt = 0.0;
-   amrex::Real m_uncoveredVol = -1.0;
-   int m_closed_chamber = 0;
+   amrex::Real m_dpdtFactor {1.0};
+   amrex::Real m_pOld {-1.0};
+   amrex::Real m_pNew {-1.0};
+   amrex::Real m_dp0dt {0.0};
+   amrex::Real m_uncoveredVol {-1.0};
+   int m_closed_chamber {0};
 
    // Godunov is default
-   std::string m_predict_advection_key = "Godunov_PLM";
-   std::string m_advection_key = "Godunov_PLM";
-   std::string m_predict_advection_type;
-   std::string m_advection_type;
-   int m_Godunov_ppm = 1;
-   int m_Godunov_ppm_limiter = PPM::VanLeer;
-   int m_Godunov_ForceInTrans = 0;
+   std::string m_predict_advection_key {"Godunov_PLM"};
+   std::string m_advection_key {"Godunov_PLM"};
+   std::string m_predict_advection_type {""};
+   std::string m_advection_type {""};
+   int m_Godunov_ppm {1};
+   int m_Godunov_ppm_limiter {PPM::VanLeer};
+   int m_Godunov_ForceInTrans {0};
 
    // Temporals
-   int m_do_temporals = 0;
-   int m_temp_int = 5;
-   int m_do_extremas = 0;
-   int m_do_massBalance = 0;
-   int m_do_energyBalance = 0;
-   int m_do_speciesBalance = 0;
-   amrex::Real m_massOld;
-   amrex::Real m_massNew;
-   amrex::Real m_RhoHOld;
-   amrex::Real m_RhoHNew;
-   amrex::Array<amrex::Real,NUM_SPECIES> m_RhoYOld;
-   amrex::Array<amrex::Real,NUM_SPECIES> m_RhoYNew;
+   int m_do_temporals {0};
+   int m_temp_int {5};
+   int m_do_extremas {0};
+   int m_do_massBalance {0};
+   int m_do_energyBalance {0};
+   int m_do_speciesBalance {0};
+   amrex::Real m_massOld {0.0};
+   amrex::Real m_massNew {0.0};
+   amrex::Real m_RhoHOld {0.0};
+   amrex::Real m_RhoHNew {0.0};
+   amrex::Array<amrex::Real,NUM_SPECIES> m_RhoYOld{0.0};
+   amrex::Array<amrex::Real,NUM_SPECIES> m_RhoYNew{0.0};
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM> m_domainMassFlux;
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM> m_domainRhoHFlux;
    amrex::Array<amrex::Real,2*AMREX_SPACEDIM*NUM_SPECIES> m_domainRhoYFlux;
@@ -1251,79 +1261,85 @@ class PeleLM : public amrex::AmrCore {
 
    // Number of ghost cells
 #ifdef AMREX_USE_EB
-   int m_nGrowState = 4;
+   int m_nGrowState {4};
 #else
-   int m_nGrowState = 3;
+   int m_nGrowState {3};
 #endif
-   int m_nGrowAdv = 1;
-   int m_nGrowMAC = 1;
+   int m_nGrowAdv {1};
+   int m_nGrowMAC {1};
 
    // Initialization
-   int m_do_init_proj = 1;
-   int m_numDivuIter = 1;
-   int m_init_iter = 3;
+   int m_do_init_proj {1};
+   int m_numDivuIter {1};
+   int m_init_iter {3};
 
    // Chemistry
-   int m_skipInstantRR = 0;
-   int m_plot_react = 1;
+   int m_skipInstantRR {0};
+   int m_plot_react {1};
 
    // Typical values
-   int m_resetTypValInt = 10;
-   int m_useTypValChem = 1;
-   amrex::Real m_typicalYvalMin = 1.0e-10;
+   int m_resetTypValInt {10};
+   int m_useTypValChem {1};
+   amrex::Real m_typicalYvalMin {1.0e-10};
    amrex::Vector<amrex::Real> typical_values;
 
 #ifdef AMREX_USE_EB
    // EB
-   std::string m_EB_refine_type = "Static";
-   int m_EB_refine_LevMax = -1;
-   int m_EB_refine_LevMin = -1;
-   int m_EB_refine_LevAdapt = -1;
-   int m_signDistNeeded = 0;
-   int m_EB_generate_max_level = -1;
-   amrex::Real m_derefineEBBuffer = 3.0;
+   std::string m_EB_refine_type{ "Static"};
+   int m_EB_refine_LevMax {-1};
+   int m_EB_refine_LevMin {-1};
+   int m_EB_refine_LevAdapt {-1};
+   int m_signDistNeeded {0};
+   int m_EB_generate_max_level {-1};
+   amrex::Real m_derefineEBBuffer {3.0};
    std::unique_ptr<amrex::MultiFab> m_signedDist0 = nullptr;
    amrex::Vector<amrex::Real> coveredState_h;
    amrex::Gpu::DeviceVector<amrex::Real> coveredState_d;
-   std::string m_adv_redist_type = "StateRedist";
-   std::string m_diff_redist_type = "FluxRedist";
+   std::string m_adv_redist_type {"StateRedist"};
+   std::string m_diff_redist_type {"FluxRedist"};
 #endif
    //-----------------------------------------------------------------------------
 
    //-----------------------------------------------------------------------------
    // Combustion physics
-   int fuelID = -1;
+   int fuelID {-1};
 
    // Mixture fraction
-   amrex::Array<amrex::Real, 4> Beta_mix;
-   amrex::Array<amrex::Real, NUM_SPECIES> spec_Bilger_fact;
-   amrex::Real Zfu = -1.0;
-   amrex::Real Zox = -1.0;
+   amrex::Array<amrex::Real, 4> Beta_mix{0.0};
+   amrex::Array<amrex::Real, NUM_SPECIES> spec_Bilger_fact{0.0};
+   amrex::Real Zfu {-1.0};
+   amrex::Real Zox {-1.0};
 
    // Progress variable
    // C is a linear combination of Ys and T
    amrex::GpuArray<amrex::Real,NUM_SPECIES+1> m_Cweights;
-   amrex::Real m_C0 = -1.0;
-   amrex::Real m_C1 = -1.0;
-   int m_Crevert = 0;           // Flip the definition with 1 - ∑_k wgt*v_k
+   amrex::Real m_C0 {-1.0};
+   amrex::Real m_C1 {-1.0};
+   int m_Crevert {0};           // Flip the definition with 1 - ∑_k wgt*v_k
    //-----------------------------------------------------------------------------
 
    //-----------------------------------------------------------------------------
    // Linear Solvers
+   std::unique_ptr<DiffusionOp> m_diffusion_op;
+   std::unique_ptr<DiffusionOp> m_mcdiffusion_op;
+   std::unique_ptr<DiffusionTensorOp> m_diffusionTensor_op;
+   std::unique_ptr<Hydro::MacProjector> macproj;
+   int m_macProjNeedReset {0};
+   int m_macProjOldSize {0};
 
    // Nodal projection
-   int m_nodal_mg_max_coarsening_level = 100;
-   amrex::Real m_nodal_mg_rtol = 1.0e-11;
-   amrex::Real m_nodal_mg_atol = 1.0e-14;
-   std::string m_hypre_namespace_nodal = "nodal_hypre";
+   int m_nodal_mg_max_coarsening_level {100};
+   amrex::Real m_nodal_mg_rtol {1.0e-11};
+   amrex::Real m_nodal_mg_atol {1.0e-14};
+   std::string m_hypre_namespace_nodal {"nodal_hypre"};
 
    // MAC projection
-   int m_mac_mg_verbose = 0;
-   int m_mac_mg_max_coarsening_level = 100;
-   int m_mac_max_order = 4;
-   amrex::Real m_mac_mg_rtol = 1.0e-11;
-   amrex::Real m_mac_mg_atol = 1.0e-14;
-   std::string m_hypre_namespace_mac = "mac_hypre";
+   int m_mac_mg_verbose {0};
+   int m_mac_mg_max_coarsening_level {100};
+   int m_mac_max_order {4};
+   amrex::Real m_mac_mg_rtol {1.0e-11};
+   amrex::Real m_mac_mg_atol {1.0e-14};
+   std::string m_hypre_namespace_mac {"mac_hypre"};
    //-----------------------------------------------------------------------------
 };
 
