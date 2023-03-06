@@ -517,6 +517,31 @@ void PeleLM::resetCoveredMask()
          }
          m_baChem[lev].reset(new BoxArray(std::move(bl)));
          m_dmapChem[lev].reset(new DistributionMapping(*m_baChem[lev]));
+
+         if (m_doLoadBalance) {
+             LayoutData<Real> new_cost(*m_baChem[lev],*m_dmapChem[lev]);
+             computeCosts(lev, new_cost);
+
+             if (m_loadBalanceMethodChem == LoadBalanceMethod::SFC) {
+                 Vector<Real> costsVec(m_baChem[lev]->size());
+                 ParallelDescriptor::GatherLayoutDataToVector(new_cost, costsVec,
+                                                              ParallelContext::IOProcessorNumberSub());
+                 ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
+                 Real efficiency;
+                 m_dmapChem[lev].reset(new DistributionMapping(DistributionMapping::makeSFC(costsVec, *m_baChem[lev], efficiency)));
+
+             } else if (m_loadBalanceMethodChem == LoadBalanceMethod::Knapsack) {
+                 const amrex::Real navg = static_cast<Real>(m_baChem[lev]->size()) /
+                                          static_cast<Real>(ParallelDescriptor::NProcs());
+                 const int nmax = static_cast<int>(std::max(std::round(m_loadBalanceKSfactor*navg), std::ceil(navg)));
+                 Vector<Real> costsVec(m_baChem[lev]->size());
+                 ParallelDescriptor::GatherLayoutDataToVector(new_cost, costsVec,
+                                                              ParallelContext::IOProcessorNumberSub());
+                 ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
+                 Real efficiency;
+                 m_dmapChem[lev].reset(new DistributionMapping(DistributionMapping::makeKnapSack(costsVec, efficiency, nmax)));
+             }
+         }
       }
 
       // Set a BoxArray for the chemistry on the finest level too
@@ -527,6 +552,31 @@ void PeleLM::resetCoveredMask()
       m_baChemFlag[finest_level].resize(m_baChem[finest_level]->size());
       std::fill(m_baChemFlag[finest_level].begin(), m_baChemFlag[finest_level].end(), 1);
       m_dmapChem[finest_level].reset(new DistributionMapping(*m_baChem[finest_level]));
+
+      if (m_doLoadBalance) {
+          LayoutData<Real> new_cost(*m_baChem[finest_level],*m_dmapChem[finest_level]);
+          computeCosts(finest_level, new_cost);
+
+          if (m_loadBalanceMethodChem == LoadBalanceMethod::SFC) {
+              Vector<Real> costsVec(m_baChem[finest_level]->size());
+              ParallelDescriptor::GatherLayoutDataToVector(new_cost, costsVec,
+                                                           ParallelContext::IOProcessorNumberSub());
+              ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
+              Real efficiency;
+              m_dmapChem[finest_level].reset(new DistributionMapping(DistributionMapping::makeSFC(costsVec, *m_baChem[finest_level], efficiency)));
+
+          } else if (m_loadBalanceMethodChem == LoadBalanceMethod::Knapsack) {
+              const amrex::Real navg = static_cast<Real>(m_baChem[finest_level]->size()) /
+                                       static_cast<Real>(ParallelDescriptor::NProcs());
+              const int nmax = static_cast<int>(std::max(std::round(m_loadBalanceKSfactor*navg), std::ceil(navg)));
+              Vector<Real> costsVec(m_baChem[finest_level]->size());
+              ParallelDescriptor::GatherLayoutDataToVector(new_cost, costsVec,
+                                                           ParallelContext::IOProcessorNumberSub());
+              ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
+              Real efficiency;
+              m_dmapChem[finest_level].reset(new DistributionMapping(DistributionMapping::makeKnapSack(costsVec, efficiency, nmax)));
+          }
+      }
 
       // Switch off trigger
       m_resetCoveredMask = 0;
@@ -584,7 +634,7 @@ PeleLM::derive(const std::string &a_name,
           const Box& bx = mfi.growntilebox(nGrow);
           FArrayBox& derfab = (*mf)[mfi];
           FArrayBox const& statefab = (*statemf)[mfi];
-          FArrayBox const& reactfab = (m_incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
+          FArrayBox const& reactfab = (m_solver==PhysicSolver::Incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
           FArrayBox const& pressfab = ldata_p->press[mfi];
           rec->derFunc()(this, bx, derfab, 0, rec->numDerive(), statefab, reactfab, pressfab, geom[lev], a_time, stateBCs, lev);
       }
@@ -642,7 +692,7 @@ PeleLM::deriveComp(const std::string &a_name,
           const Box& bx = mfi.growntilebox(nGrow);
           FArrayBox& derfab = derTemp[mfi];
           FArrayBox const& statefab = (*statemf)[mfi];
-          FArrayBox const& reactfab = (m_incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
+          FArrayBox const& reactfab = (m_solver==PhysicSolver::Incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
           FArrayBox const& pressfab = ldata_p->press[mfi];
           rec->derFunc()(this, bx, derfab, 0, rec->numDerive(), statefab, reactfab, pressfab, geom[lev], a_time, stateBCs, lev);
       }
@@ -989,17 +1039,17 @@ PeleLM::MFStat (const Vector<const MultiFab*> &a_mf, int comp)
 void PeleLM::setTypicalValues(const TimeStamp &a_time, int is_init)
 {
     // Get state Max/Min
-    auto stateMax = ( m_incompressible ) ? MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,AMREX_SPACEDIM)
-                                         : MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR);
-    auto stateMin = ( m_incompressible ) ? MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,AMREX_SPACEDIM)
-                                         : MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR);
+    auto stateMax = ( m_solver==PhysicSolver::LowMachNumber ) ? MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR)
+                                                              : MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,AMREX_SPACEDIM);
+    auto stateMin = ( m_solver==PhysicSolver::LowMachNumber ) ? MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR)
+                                                              : MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,AMREX_SPACEDIM);
 
     // Fill typical values vector
     for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
        typical_values[idim] = std::max(stateMax[VELX+idim],std::abs(stateMin[VELX+idim]));
     }
 
-    if (!m_incompressible) {
+    if (m_solver==PhysicSolver::LowMachNumber) {
         // Average between max/min
         typical_values[DENSITY] = 0.5 * (stateMax[DENSITY] + stateMin[DENSITY]);
         for (int n = 0; n < NUM_SPECIES; n++) {
@@ -1025,7 +1075,7 @@ void PeleLM::setTypicalValues(const TimeStamp &a_time, int is_init)
             Print() << typical_values[idim] << ' ';
         }
         Print() << '\n';
-        if (!m_incompressible) {
+        if (m_solver==PhysicSolver::LowMachNumber) {
             Print() << "\tDensity:  " << typical_values[DENSITY] << '\n';
             Print() << "\tTemp:     " << typical_values[TEMP]    << '\n';
             Print() << "\tH:        " << typical_values[RHOH]    << '\n';
