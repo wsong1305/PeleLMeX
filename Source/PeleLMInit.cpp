@@ -53,10 +53,10 @@ void PeleLM::MakeNewLevelFromScratch( int lev,
 
    // Initialize the LevelData
    m_leveldata_old[lev].reset(new LevelData(grids[lev], dmap[lev], *m_factory[lev],
-                                            m_incompressible, m_has_divu,
+                                            m_solver, m_has_divu,
                                             m_nAux, m_nGrowState, m_use_soret, m_do_les));
    m_leveldata_new[lev].reset(new LevelData(grids[lev], dmap[lev], *m_factory[lev],
-                                            m_incompressible, m_has_divu,
+                                            m_solver, m_has_divu,
                                             m_nAux, m_nGrowState, m_use_soret, m_do_les));
 
    if (max_level > 0 && lev != max_level) {
@@ -87,6 +87,9 @@ void PeleLM::MakeNewLevelFromScratch( int lev,
    // Times
    m_t_new[lev] = time;
    m_t_old[lev] = time - 1.0e200;
+
+   // Load balance
+   m_costs[lev] = std::make_unique<LayoutData<Real>>(ba, dm);
 
    // Mac projector
 #if AMREX_USE_EB
@@ -376,15 +379,15 @@ void PeleLM::initLevelData(int lev) {
       FArrayBox DummyFab(bx,1);
       auto  const &state_arr   = ldata_p->state.array(mfi);
       auto  const &aux_arr   = (m_nAux > 0) ? ldata_p->auxiliaries.array(mfi) : DummyFab.array();
-      amrex::ParallelFor(bx, [=,m_incompressible=m_incompressible]
+      amrex::ParallelFor(bx, [=,is_incomp=m_solver==PhysicSolver::Incompressible]
       AMREX_GPU_DEVICE (int i, int j, int k) noexcept
       {
-         pelelm_initdata(i, j, k, m_incompressible, state_arr, aux_arr,
+         pelelm_initdata(i, j, k, is_incomp, state_arr, aux_arr,
                          geomdata, *lprobparm, lpmfdata);
       });
    }
 
-   if (!m_incompressible) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       // Initialize thermodynamic pressure
       setThermoPress(lev, AmrNewTime);
       if (m_has_divu) {

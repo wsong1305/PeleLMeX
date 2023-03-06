@@ -1257,7 +1257,7 @@ void PeleLM::diffuseVelocity()
 
    // CrankNicholson 0.5 coeff
    const Real dt_lcl = 0.5 * m_dt;
-   if (m_incompressible) {
+   if (m_solver==PhysicSolver::Incompressible) {
       getDiffusionTensorOp()->diffuse_velocity(GetVecOfPtrs(getVelocityVect(AmrNewTime)),
                                                {},
                                                GetVecOfConstPtrs(getViscosityVect(AmrNewTime)),

@@ -66,7 +66,7 @@ void PeleLM::Advance(int is_initIter) {
    std::unique_ptr<AdvanceDiffData> diffData;
    diffData.reset(new AdvanceDiffData(finest_level, grids, dmap, m_factory, m_nGrowAdv, m_use_wbar, m_use_soret));
    std::unique_ptr<AdvanceAdvData> advData;
-   advData.reset(new AdvanceAdvData(finest_level, grids, dmap, m_factory, m_incompressible,
+   advData.reset(new AdvanceAdvData(finest_level, grids, dmap, m_factory, m_solver,
                                     m_nGrowAdv, m_nGrowMAC));
 
    for (int lev = 0; lev <= finest_level; lev++) {
@@ -96,7 +96,7 @@ void PeleLM::Advance(int is_initIter) {
 
    // compute t^{n} data
    calcViscosity(AmrOldTime);
-   if (! m_incompressible ) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       calcDiffusivity(AmrOldTime);
 #ifdef PELE_USE_EFIELD
       poissonSolveEF(AmrOldTime);
@@ -119,7 +119,7 @@ void PeleLM::Advance(int is_initIter) {
    }
 #endif
 
-   if (! m_incompressible ) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       floorSpecies(AmrOldTime);
 
       //----------------------------------------------------------------
@@ -138,7 +138,7 @@ void PeleLM::Advance(int is_initIter) {
    BL_PROFILE_VAR_START(PLM_SETUP);
    //----------------------------------------------------------------
    copyTransportOldToNew();
-   if (! m_incompressible ) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       copyDiffusionOldToNew(diffData);
 #ifdef PELE_USE_EFIELD
       ionDriftVelocity(advData);
@@ -151,7 +151,7 @@ void PeleLM::Advance(int is_initIter) {
 
    //----------------------------------------------------------------
    // Scalar advance
-   if ( m_incompressible ) {
+   if ( m_solver==PhysicSolver::Incompressible ) {
       Real MACStart = 0.0;
       if (m_verbose > 1) {
          MACStart = ParallelDescriptor::second();
@@ -203,7 +203,9 @@ void PeleLM::Advance(int is_initIter) {
       VelAdvStart = ParallelDescriptor::second();
    }
    // Re-evaluate viscosity only if scalar updated
-   if (!m_incompressible) calcViscosity(AmrNewTime);
+   if (m_solver==PhysicSolver::LowMachNumber) {
+      calcViscosity(AmrNewTime);
+   }
 
    // Compute t^{n+1/2} velocity advection term
    computeVelocityAdvTerm(advData);

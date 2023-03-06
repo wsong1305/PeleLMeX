@@ -197,7 +197,7 @@ void PeleLM::redistributeDiff(int a_lev,
 void PeleLM::initCoveredState()
 {
     // TODO use typical values
-    if ( m_incompressible ) {
+    if ( m_solver==PhysicSolver::Incompressible ) {
         coveredState_h.resize(AMREX_SPACEDIM);
         AMREX_D_TERM(coveredState_h[0] = typical_values[VELX+0];,
                      coveredState_h[1] = typical_values[VELX+1];,
@@ -246,7 +246,7 @@ void PeleLM::setCoveredState(int lev, const TimeStamp &a_time)
 
     auto ldata_p = getLevelDataPtr(lev,a_time);
 
-    if ( m_incompressible ) {
+    if ( m_solver==PhysicSolver::Incompressible ) {
         EB_set_covered(ldata_p->state,0,AMREX_SPACEDIM,coveredState_h);
     } else {
         EB_set_covered(ldata_p->state,0,NVAR,coveredState_h);
@@ -272,7 +272,7 @@ void PeleLM::initialRedistribution()
             auto const& fact = EBFactory(lev);
 
             // State
-            if ( m_incompressible ) {
+            if ( m_solver==PhysicSolver::Incompressible ) {
                Vector<Real> stateCovered(AMREX_SPACEDIM,0.0);
                EB_set_covered(ldataNew_p->state,0,AMREX_SPACEDIM,stateCovered);
                ldataNew_p->state.FillBoundary(geom[lev].periodicity());
@@ -305,7 +305,7 @@ void PeleLM::initialRedistribution()
                                  apz = fact.getAreaFrac()[2]->const_array(mfi););
                     vfrac = fact.getVolFrac().const_array(mfi);
 
-                    if ( m_incompressible ) {
+                    if ( m_solver==PhysicSolver::Incompressible ) {
                         auto bcRec = fetchBCRecArray(0,AMREX_SPACEDIM);
                         auto bcRec_d = convertToDeviceVector(bcRec);
                         Redistribution::ApplyToInitialData( bx, AMREX_SPACEDIM,

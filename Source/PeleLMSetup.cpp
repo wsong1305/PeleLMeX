@@ -1,18 +1,20 @@
-#include <PeleLM.H>
-#include <AMReX_ParmParse.H>
-#include <PeleLMDeriveFunc.H>
-#include "PelePhysics.H"
-#include <AMReX_buildInfo.H>
+#include "PeleLM.H"
+#include "PeleLMDeriveFunc.H"
 #ifdef PELE_USE_EFIELD
 #include "EOS_Extension.H"
 #endif
+
+#include <PelePhysics.H>
+
+#include <AMReX_ParmParse.H>
+#include <AMReX_buildInfo.H>
 
 #ifdef AMREX_USE_GPU
 #include <AMReX_SUNMemory.H>
 #endif
 
 #ifdef PELELM_USE_SOOT
-#include "SootModel.H"
+#include <SootModel.H>
 #endif
 using namespace amrex;
 
@@ -80,7 +82,7 @@ void PeleLM::Setup() {
    resizeArray();
 
    // Initialize EOS and others
-   if (!m_incompressible) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       amrex::Print() << " Initialization of Transport ... \n";
       trans_parms.allocate();
       if (m_les_verbose and m_do_les)
@@ -289,10 +291,14 @@ void PeleLM::readParameters() {
    // -----------------------------------------
 
    // -----------------------------------------
-   // incompressible vs. low Mach
+   // Physic solver: incompressible or low Mach
    pp.query("use_divu", m_has_divu);
-   pp.query("incompressible", m_incompressible);
-   if (m_incompressible) {
+   std::string solver_str{""};
+   pp.query("physic_solver", solver_str);
+   if ( solver_str == "incompressible" ) {
+      m_solver = PhysicSolver::Incompressible;
+   }
+   if (m_solver==PhysicSolver::Incompressible) {
       m_has_divu = 0;
       m_do_react = 0;
       pp.query("rho", m_rho);
@@ -300,6 +306,7 @@ void PeleLM::readParameters() {
       AMREX_ASSERT_WITH_MESSAGE(m_rho>0.0,"peleLM.rho is needed when running incompressible");
       AMREX_ASSERT_WITH_MESSAGE(m_mu>0.0,"peleLM.mu is needed when running incompressible");
    }
+
    Vector<Real> grav(AMREX_SPACEDIM,0);
    pp.queryarr("gravity", grav, 0, AMREX_SPACEDIM);
    Vector<Real> gp0(AMREX_SPACEDIM,0);
@@ -409,6 +416,25 @@ void PeleLM::readParameters() {
    }
 
    // -----------------------------------------
+   // Load Balancing
+   // -----------------------------------------
+   pp.query("do_load_balancing",m_doLoadBalance);
+   pp.query("load_balancing_method",m_loadBalanceMethod);
+   pp.query("load_balancing_cost_estimate",m_loadBalanceCost);
+   pp.query("load_balancing_efficiency_threshold",m_loadBalanceEffRatioThreshold);
+   pp.query("chem_load_balancing_method",m_loadBalanceMethodChem);
+   pp.query("chem_load_balancing_cost_estimate",m_loadBalanceCostChem);
+
+   // Deactivate load balancing for serial runs
+#ifdef AMREX_USE_MPI
+   if (ParallelContext::NProcsSub() == 1) {
+       m_doLoadBalance = 0;
+   }
+#else
+   m_doLoadBalance = 0;
+#endif
+
+   // -----------------------------------------
    // Advection
    // -----------------------------------------
    pp.query("advection_scheme",m_advection_key);
@@ -485,7 +511,7 @@ void PeleLM::readParameters() {
    ppa.query("max_dt", m_max_dt);
    ppa.query("min_dt", m_min_dt);
 
-   if ( max_level > 0 ) {
+   if ( max_level > 0 || m_doLoadBalance) {
       ppa.query("regrid_int", m_regrid_int);
    }
 
@@ -639,7 +665,7 @@ void PeleLM::variablesSetup() {
 #endif
    Print() << " \n";
 
-   if (! m_incompressible) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       Print() << " Density: " << DENSITY << "\n";
       stateComponents.emplace_back(DENSITY,"density");
       Print() << " First species: " << FIRSTSPEC << "\n";
@@ -678,22 +704,22 @@ void PeleLM::variablesSetup() {
       }
    }
 
-   if ( m_incompressible ) {
-      Print() << " => Total number of state variables: " << AMREX_SPACEDIM << "\n";
-   } else {
+   if ( m_solver==PhysicSolver::LowMachNumber ) {
       Print() << " => Total number of state variables: " << NVAR << "\n";
+   } else {
+      Print() << " => Total number of state variables: " << AMREX_SPACEDIM << "\n";
    }
    Print() << PrettyLine;
    Print() << "\n";
 
    //----------------------------------------------------------------
    // Set advection/diffusion types
-   if ( m_incompressible ) {
-      m_AdvTypeState.resize(AMREX_SPACEDIM);
-      m_DiffTypeState.resize(AMREX_SPACEDIM);
-   } else {
+   if ( m_solver==PhysicSolver::LowMachNumber ) {
       m_AdvTypeState.resize(NVAR);
       m_DiffTypeState.resize(NVAR);
+   } else {
+      m_AdvTypeState.resize(AMREX_SPACEDIM);
+      m_DiffTypeState.resize(AMREX_SPACEDIM);
    }
 
    // Velocity - follow incflo
@@ -702,7 +728,7 @@ void PeleLM::variablesSetup() {
       m_DiffTypeState[VELX+idim] = 1;  // Diffusive
    }
 
-   if (! m_incompressible) {
+   if (m_solver==PhysicSolver::LowMachNumber) {
       m_AdvTypeState[DENSITY] = 1;
       m_DiffTypeState[DENSITY] = 0;
       for (int n = 0; n < NUM_SPECIES; ++n) {
@@ -731,13 +757,13 @@ void PeleLM::variablesSetup() {
 
    //----------------------------------------------------------------
    // Typical values container
-   if ( m_incompressible ) {
-      typical_values.resize(AMREX_SPACEDIM,-1.0);
-   } else {
+   if ( m_solver==PhysicSolver::LowMachNumber ) {
       typical_values.resize(NVAR,-1.0);
+   } else {
+      typical_values.resize(AMREX_SPACEDIM,-1.0);
    }
 
-   if ( !m_incompressible ) {
+   if ( m_solver==PhysicSolver::LowMachNumber ) {
       // -----------------------------------------
       // Combustion
       // -----------------------------------------
@@ -805,7 +831,7 @@ void PeleLM::derivedSetup()
 {
    BL_PROFILE("PeleLM::derivedSetup()");
 
-   if (!m_incompressible) {
+   if ( m_solver==PhysicSolver::LowMachNumber ) {
 
       // Get species names
       Vector<std::string> spec_names;
@@ -1128,8 +1154,13 @@ void PeleLM::resizeArray() {
    // Time
    m_t_old.resize(max_level+1);
    m_t_new.resize(max_level+1);
+
 #ifdef PELELM_USE_SPRAY
    m_spraystate.resize(max_level+1);
    m_spraysource.resize(max_level+1);
 #endif
+
+   // Load balancing
+   m_costs.resize(max_level+1);
+   m_loadBalanceEff.resize(max_level+1);
 }

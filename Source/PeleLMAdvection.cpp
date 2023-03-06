@@ -49,7 +49,7 @@ void PeleLM::computeVelocityAdvTerm(std::unique_ptr<AdvanceAdvData> &advData)
       // Get divU
       int nGrow_divu = 4;  // Why incflo use 4 ?
       MultiFab divu(grids[lev],dmap[lev],1,nGrow_divu,MFInfo(),Factory(lev));
-      if (m_incompressible) {
+      if (m_solver==PhysicSolver::Incompressible) {
          divu.setVal(0.0);
       } else {
          Real time  = getTime(lev,AmrOldTime);
@@ -134,7 +134,7 @@ void PeleLM::computeVelocityAdvTerm(std::unique_ptr<AdvanceAdvData> &advData)
 
       int nGrow_divu = 4;  // Why incflo use 4 ?
       MultiFab divu(grids[lev],dmap[lev],1,nGrow_divu,MFInfo(),Factory(lev));
-      if (m_incompressible) {
+      if (m_solver==PhysicSolver::Incompressible) {
          divu.setVal(0.0);
       } else {
          Real time  = getTime(lev,AmrOldTime);
@@ -328,7 +328,7 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
       // Get divU
       int nGrow_divu = 1;  // Why incflo use 4 ?
       MultiFab divu(grids[lev],dmap[lev],1,nGrow_divu,MFInfo(),Factory(lev));
-      if (m_incompressible) {
+      if (m_solver==PhysicSolver::Incompressible) {
          divu.setVal(0.0);
       } else {
          // TODO: check the number of ghost cells
@@ -669,7 +669,7 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
 
       int nGrow_divu = 1;  // TODO EB Why incflo use 4 ?
       MultiFab divu(grids[lev],dmap[lev],1,nGrow_divu,MFInfo(),Factory(lev));
-      if (m_incompressible) {
+      if (m_solver==PhysicSolver::Incompressible) {
          divu.setVal(0.0);
       } else {
          Real time  = getTime(lev,AmrOldTime);
@@ -796,7 +796,7 @@ void PeleLM::computePassiveAdvTerms(std::unique_ptr<AdvanceAdvData> &advData,
       // Get divU
       int nGrow_divu = 1;  // Why incflo use 4 ?
       MultiFab divu(grids[lev],dmap[lev],1,nGrow_divu,MFInfo(),Factory(lev));
-      if (m_incompressible) {
+      if (m_solver==PhysicSolver::Incompressible) {
          divu.setVal(0.0);
       } else {
          // TODO: check the number of ghost cells
@@ -880,7 +880,7 @@ void PeleLM::computePassiveAdvTerms(std::unique_ptr<AdvanceAdvData> &advData,
 
       int nGrow_divu = 1;  // TODO EB Why incflo use 4 ?
       MultiFab divu(grids[lev],dmap[lev],1,nGrow_divu,MFInfo(),Factory(lev));
-      if (m_incompressible) {
+      if (m_solver==PhysicSolver::Incompressible) {
          divu.setVal(0.0);
       } else {
          Real time  = getTime(lev,AmrOldTime);

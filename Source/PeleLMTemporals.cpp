@@ -8,14 +8,14 @@ void PeleLM::initTemporals(const PeleLM::TimeStamp &a_time)
        && !(m_nstep % m_temp_int == 0)) return;
 
    // Reset mass fluxes integrals on domain boundaries
-   if (m_do_massBalance && !m_incompressible) {
+   if (m_do_massBalance && m_solver==PhysicSolver::LowMachNumber) {
       m_massOld = MFSum(GetVecOfConstPtrs(getDensityVect(a_time)),0);
       for (int idim = 0; idim <  AMREX_SPACEDIM; idim++) {
          m_domainMassFlux[2*idim] = 0.0;
          m_domainMassFlux[2*idim+1] = 0.0;
       }
    }
-   if (m_do_energyBalance && !m_incompressible) {
+   if (m_do_energyBalance && m_solver==PhysicSolver::LowMachNumber) {
       m_RhoHOld = MFSum(GetVecOfConstPtrs(getRhoHVect(a_time)),0);
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
          m_domainRhoHFlux[2*idim] = 0.0;
@@ -23,7 +23,7 @@ void PeleLM::initTemporals(const PeleLM::TimeStamp &a_time)
       }
    }
 
-   if (m_do_speciesBalance && !m_incompressible) {
+   if (m_do_speciesBalance && m_solver==PhysicSolver::LowMachNumber) {
       for (int n = 0; n < NUM_SPECIES; n++){
          m_RhoYOld[n] = MFSum(GetVecOfConstPtrs(getSpeciesVect(a_time)),n);
          for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
@@ -471,13 +471,13 @@ void PeleLM::writeTemporals()
 {
    //----------------------------------------------------------------
    // Mass balance
-   if (m_do_massBalance && !m_incompressible) {
+   if (m_do_massBalance && m_solver==PhysicSolver::LowMachNumber) {
       massBalance();
    }
 
    //----------------------------------------------------------------
    // Species balance
-   if (m_do_speciesBalance && !m_incompressible) {
+   if (m_do_speciesBalance && m_solver==PhysicSolver::LowMachNumber) {
       speciesBalance();
    }
 
@@ -514,10 +514,10 @@ void PeleLM::writeTemporals()
    tmpStateFile.flush();
 
    // Get min/max for state components
-   auto stateMax  = ( m_incompressible ) ? MLmax(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,AMREX_SPACEDIM)
-                                         : MLmax(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,NVAR);
-   auto stateMin  = ( m_incompressible ) ? MLmin(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,AMREX_SPACEDIM)
-                                         : MLmin(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,NVAR);
+   auto stateMax  = ( m_solver==PhysicSolver::LowMachNumber ) ? MLmax(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,NVAR)
+                                                              : MLmax(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,AMREX_SPACEDIM);
+   auto stateMin  = ( m_solver==PhysicSolver::LowMachNumber ) ? MLmin(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,NVAR)
+                                                              : MLmin(GetVecOfConstPtrs(getStateVect(AmrNewTime)),0,AMREX_SPACEDIM);
 
    tmpExtremasFile << m_nstep << " " << m_cur_time;           // Time
    for (int n = 0; n < stateMax.size(); ++n) {                // Min & max of each state variable

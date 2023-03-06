@@ -760,8 +760,8 @@ void DiffusionTensorOp::diffuse_velocity (Vector<MultiFab*> const& a_vel,
 
    int have_density = (a_density.empty()) ? 0 : 1;
 
-   AMREX_ASSERT( (!m_pelelm->m_incompressible && have_density) ||
-                 (m_pelelm->m_incompressible && !have_density) );
+   AMREX_ASSERT( (m_pelelm->m_solver==PhysicSolver::LowMachNumber && have_density) ||
+                 (m_pelelm->m_solver==PhysicSolver::Incompressible && !have_density) );
 
    m_solve_op->setScalars(1.0, a_dt);
    for (int lev = 0; lev <= finest_level; ++lev) {
@@ -799,7 +799,7 @@ void DiffusionTensorOp::diffuse_velocity (Vector<MultiFab*> const& a_vel,
            auto const& rho_a = (have_density) ? a_density[lev]->const_array(mfi)
                                               : a_vel[lev]->const_array(mfi);          // Dummy unused Array4
            amrex::ParallelFor(bx, AMREX_SPACEDIM, [=,rho_incomp=m_pelelm->m_rho,
-                                                     is_incomp=m_pelelm->m_incompressible]
+                                                     is_incomp=m_pelelm->m_solver==PhysicSolver::Incompressible]
            AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
            {
                if (is_incomp) {
