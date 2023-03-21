@@ -520,7 +520,7 @@ void PeleLM::resetCoveredMask()
 
          if (m_doLoadBalance) {
              LayoutData<Real> new_cost(*m_baChem[lev],*m_dmapChem[lev]);
-             computeCosts(lev, new_cost);
+             computeCosts(lev, new_cost, m_loadBalanceCostChem);
 
              if (m_loadBalanceMethodChem == LoadBalanceMethod::SFC) {
                  Vector<Real> costsVec(m_baChem[lev]->size());
@@ -529,6 +529,9 @@ void PeleLM::resetCoveredMask()
                  ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
                  Real efficiency;
                  m_dmapChem[lev].reset(new DistributionMapping(DistributionMapping::makeSFC(costsVec, *m_baChem[lev], efficiency)));
+                 if (m_verbose > 1) {
+                     Print() << " Chem. Load Balancing Efficiency on level " << lev << ": " << efficiency << "\n";
+                 }
 
              } else if (m_loadBalanceMethodChem == LoadBalanceMethod::Knapsack) {
                  const amrex::Real navg = static_cast<Real>(m_baChem[lev]->size()) /
@@ -540,6 +543,9 @@ void PeleLM::resetCoveredMask()
                  ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
                  Real efficiency;
                  m_dmapChem[lev].reset(new DistributionMapping(DistributionMapping::makeKnapSack(costsVec, efficiency, nmax)));
+                 if (m_verbose > 1) {
+                     Print() << " Chem. Load Balancing Efficiency on level " << lev << ": " << efficiency << "\n";
+                 }
              }
          }
       }
@@ -555,7 +561,7 @@ void PeleLM::resetCoveredMask()
 
       if (m_doLoadBalance) {
           LayoutData<Real> new_cost(*m_baChem[finest_level],*m_dmapChem[finest_level]);
-          computeCosts(finest_level, new_cost);
+          computeCosts(finest_level, new_cost, m_loadBalanceCostChem);
 
           if (m_loadBalanceMethodChem == LoadBalanceMethod::SFC) {
               Vector<Real> costsVec(m_baChem[finest_level]->size());
@@ -564,6 +570,9 @@ void PeleLM::resetCoveredMask()
               ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
               Real efficiency;
               m_dmapChem[finest_level].reset(new DistributionMapping(DistributionMapping::makeSFC(costsVec, *m_baChem[finest_level], efficiency)));
+              if (m_verbose > 1) {
+                  Print() << " Chem. Load Balancing Efficiency on level " << finest_level << ": " << efficiency << "\n";
+              }
 
           } else if (m_loadBalanceMethodChem == LoadBalanceMethod::Knapsack) {
               const amrex::Real navg = static_cast<Real>(m_baChem[finest_level]->size()) /
@@ -575,11 +584,80 @@ void PeleLM::resetCoveredMask()
               ParallelDescriptor::Bcast(costsVec.data(), costsVec.size(), ParallelContext::IOProcessorNumberSub());
               Real efficiency;
               m_dmapChem[finest_level].reset(new DistributionMapping(DistributionMapping::makeKnapSack(costsVec, efficiency, nmax)));
+              if (m_verbose > 1) {
+                  Print() << " Chem. Load Balancing Efficiency on level " << finest_level << ": " << efficiency << "\n";
+              }
           }
       }
 
       // Switch off trigger
       m_resetCoveredMask = 0;
+   } else {
+      // Load balance the chem. distribution map
+      if (m_doLoadBalance) {
+         for (int lev = 0; lev <= finest_level; ++lev) {
+             if ( lev == finest_level && m_max_grid_size_chem.min() < 0 ) {
+                 continue;
+             }
+             LayoutData<Real> new_cost(*m_baChem[lev],*m_dmapChem[lev]);
+             computeCosts(lev, new_cost, m_loadBalanceCostChem);
+
+             // Use efficiency: average MPI rank cost / max cost
+             amrex::Real currentEfficiency = 0.0;
+             amrex::Real testEfficiency = 0.0;
+
+             DistributionMapping test_dmap;
+             // Build the test dmap, w/o braodcasting
+             if (m_loadBalanceMethodChem == LoadBalanceMethod::SFC) {
+
+                 test_dmap = DistributionMapping::makeSFC(new_cost,
+                                                          currentEfficiency, testEfficiency,
+                                                          false,
+                                                          ParallelDescriptor::IOProcessorNumber());
+
+             } else if (m_loadBalanceMethodChem == LoadBalanceMethod::Knapsack) {
+
+                 const amrex::Real navg = static_cast<Real>(m_baChem[lev]->size()) /
+                                          static_cast<Real>(ParallelDescriptor::NProcs());
+                 const int nmax = static_cast<int>(std::max(std::round(m_loadBalanceKSfactor*navg), std::ceil(navg)));
+                 test_dmap = DistributionMapping::makeKnapSack(new_cost,
+                                                               currentEfficiency, testEfficiency,
+                                                               nmax,
+                                                               false,
+                                                               ParallelDescriptor::IOProcessorNumber());
+             }
+
+             if ( m_verbose > 0) {
+                 Print() << " Current Chem LoadBalancing efficiency on lev " << lev << ": " << currentEfficiency << "\n"
+                         << " Test Chem LoadBalancing efficiency: " << lev << ": " << testEfficiency << " \n"; 
+             }
+
+             // IO proc determine if the test dmap offers significant improvements
+             int updateDmap = false;
+             if ((m_loadBalanceEffRatioThreshold > 0.0)
+                 && (ParallelDescriptor::MyProc() == ParallelDescriptor::IOProcessorNumber()))
+             {   
+                 updateDmap = testEfficiency > m_loadBalanceEffRatioThreshold*currentEfficiency;
+             }
+             ParallelDescriptor::Bcast(&updateDmap, 1, ParallelDescriptor::IOProcessorNumber());
+
+             // Bcast the test dmap if better
+             if (updateDmap) {
+                 Vector<int> pmap;
+                 if (ParallelDescriptor::MyProc() == ParallelDescriptor::IOProcessorNumber()) {
+                     pmap = test_dmap.ProcessorMap();
+                 } else {
+                     pmap.resize(static_cast<std::size_t>(m_baChem[lev]->size()));
+                 }
+                 ParallelDescriptor::Bcast(pmap.data(), pmap.size(), ParallelDescriptor::IOProcessorNumber());
+
+                 if (ParallelDescriptor::MyProc() != ParallelDescriptor::IOProcessorNumber()) {
+                     test_dmap = DistributionMapping(pmap);
+                 }
+                 m_dmapChem[lev].reset(new DistributionMapping(test_dmap));
+             }
+         }
+      }
    }
 
 

@@ -135,7 +135,7 @@ void PeleLM::regrid(int lbase,
 
                      // Get the cost on a LayoutData associated with the new grid
                      LayoutData<Real> new_cost(new_ba,new_dmap);
-                     computeCosts(lev, new_cost);
+                     computeCosts(lev, new_cost, m_loadBalanceCost);
 
                      if (m_loadBalanceMethod == LoadBalanceMethod::SFC) {
                          Vector<Real> costsVec(new_ba.size());
@@ -474,28 +474,35 @@ void PeleLM::ClearLevel(int lev) {
    m_loadBalanceEff[lev] = -1.0;
 }
 
-void PeleLM::computeCosts(int a_lev, LayoutData<Real> &a_costs)
+void PeleLM::computeCosts(int a_lev, LayoutData<Real> &a_costs, int a_costMethod)
 {
-    if (m_loadBalanceCost == LoadBalanceCost::Ncell ) {
+    if (a_costMethod == LoadBalanceCost::Ncell ) {
         for (MFIter mfi(a_costs, false); mfi.isValid(); ++mfi)
         {   
             a_costs[mfi] = mfi.validbox().numPts();
         }
-    } else if (m_loadBalanceCost == LoadBalanceCost::ChemFunctCallAvg ) {
+    } else if (a_costMethod == LoadBalanceCost::ChemFunctCallAvg ) {
         MultiFab costMF(a_costs.boxArray(), a_costs.DistributionMap(), 1, 0);
         fillpatch_chemFunctCall(a_lev, m_cur_time, costMF, 0);
         for (MFIter mfi(costMF, false); mfi.isValid(); ++mfi)
         {
             a_costs[mfi] = costMF[mfi].sum<RunOn::Device>(mfi.validbox(),0) / mfi.validbox().numPts();
         }
-    } else if (m_loadBalanceCost == LoadBalanceCost::ChemFunctCallMax ) {
+    } else if (a_costMethod == LoadBalanceCost::ChemFunctCallMax ) {
         MultiFab costMF(a_costs.boxArray(), a_costs.DistributionMap(), 1, 0);
         fillpatch_chemFunctCall(a_lev, m_cur_time, costMF, 0);
         for (MFIter mfi(costMF, false); mfi.isValid(); ++mfi)
         {
             a_costs[mfi] = costMF[mfi].max<RunOn::Device>(mfi.validbox(),0);
         }
-    } else if (m_loadBalanceCost == LoadBalanceCost::UserDefinedDerived) {
+    } else if (a_costMethod == LoadBalanceCost::ChemFunctCallSum ) {
+        MultiFab costMF(a_costs.boxArray(), a_costs.DistributionMap(), 1, 0);
+        fillpatch_chemFunctCall(a_lev, m_cur_time, costMF, 0);
+        for (MFIter mfi(costMF, false); mfi.isValid(); ++mfi)
+        {
+            a_costs[mfi] = costMF[mfi].sum<RunOn::Device>(mfi.validbox(),0);
+        }
+    } else if (a_costMethod == LoadBalanceCost::UserDefinedDerivedAvg) {
         MultiFab costMF(a_costs.boxArray(), a_costs.DistributionMap(), 1, 0);
         costMF.setVal(0.0);
         std::unique_ptr<MultiFab> mf;
@@ -505,6 +512,16 @@ void PeleLM::computeCosts(int a_lev, LayoutData<Real> &a_costs)
         {
             a_costs[mfi] = costMF[mfi].sum<RunOn::Device>(mfi.validbox(),0) / mfi.validbox().numPts();
         }
+    } else if (a_costMethod == LoadBalanceCost::UserDefinedDerivedSum) {
+        MultiFab costMF(a_costs.boxArray(), a_costs.DistributionMap(), 1, 0);
+        costMF.setVal(0.0);
+        std::unique_ptr<MultiFab> mf;
+        mf = derive("derUserDefined", m_cur_time, a_lev, 0);
+        costMF.ParallelCopy(*mf,0,0,1);
+        for (MFIter mfi(costMF, false); mfi.isValid(); ++mfi)
+        {
+            a_costs[mfi] = costMF[mfi].sum<RunOn::Device>(mfi.validbox(),0);
+        }
     } else {
         Abort(" Unknown cost estimate method !");
     }
@@ -512,7 +529,7 @@ void PeleLM::computeCosts(int a_lev, LayoutData<Real> &a_costs)
 
 void PeleLM::computeCosts(int a_lev)
 {
-    computeCosts(a_lev, *m_costs[a_lev]);
+    computeCosts(a_lev, *m_costs[a_lev], m_loadBalanceCost);
 }
 
 void PeleLM::resetMacProjector()

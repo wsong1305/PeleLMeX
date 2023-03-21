@@ -251,7 +251,8 @@ class PeleLM : public amrex::AmrCore {
    void checkRunParams();
 
    void computeCosts(int a_lev);
-   void computeCosts(int a_lev, amrex::LayoutData<amrex::Real> &a_costs);
+   void computeCosts(int a_lev, amrex::LayoutData<amrex::Real> &a_costs,
+                     int a_costMethod);
 
    //-----------------------------------------------------------------------------
 
