@@ -323,6 +323,9 @@ void PeleLM::MakeNewLevelFromCoarse( int lev,
          setRhoToSumRhoY(lev, AmrNewTime);
       }
 
+      // Recompute temperature from interpolated rhoYs and rhoH
+      setTemperature(lev, AmrNewTime);
+
       // Initialize thermodynamic pressure
       setThermoPress(lev, AmrNewTime);
    }
@@ -421,6 +424,15 @@ void PeleLM::RemakeLevel( int lev,
    m_resetCoveredMask = 1;
 
    if (m_solver==PhysicSolver::LowMachNumber) {
+      // Enforce density / species density consistency
+      // only usefull when using cell cons interp
+      if (m_regrid_interp_method == 1) {
+         setRhoToSumRhoY(lev, AmrNewTime);
+      }
+
+      // Recompute temperature from interpolated rhoYs and rhoH
+      setTemperature(lev, AmrNewTime);
+
       // Initialize thermodynamic pressure
       setThermoPress(lev, AmrNewTime);
    }
