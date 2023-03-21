@@ -85,9 +85,9 @@ InterpBase* PeleLM::getInterpolator(int a_method) {
 
   InterpBase *mapper = nullptr;
 
-  if (a_method == 0) {
+  if (a_method == Interpolator::PiecewiseConstant) {
     mapper = &mf_pc_interp;
-  } else if (a_method == 1) {
+  } else if (a_method == Interpolator::PiecewiseLinearConserv) {
 //
 // Get EB-aware interpolater when needed
 //
@@ -97,7 +97,7 @@ InterpBase* PeleLM::getInterpolator(int a_method) {
 #else
     mapper = &mf_cell_cons_interp;
 #endif
-  } else if (a_method == 2) {
+  } else if (a_method == Interpolator::PiecewiseLinearConservMinMax) {
 #ifdef AMREX_USE_EB
     Abort("Regrid interpolation method = 2 not available with EB !");
 #else

@@ -586,10 +586,10 @@ class PeleLM : public amrex::AmrCore {
 
    //-----------------------------------------------------------------------------
    // BOUNDARY CONDITIONS / FILLPATCH
-   amrex::InterpBase* getInterpolator(int a_method=1);
+   amrex::InterpBase* getInterpolator(int a_method=Interpolator::PiecewiseLinearConserv);
 
    // Interpolation method for regrid (default to cell cons interp)
-   int m_regrid_interp_method = 1;
+   int m_regrid_interp_method = Interpolator::PiecewiseLinearConserv;
 
    // Convert PhysBC into field BCs
    void setBoundaryConditions();
