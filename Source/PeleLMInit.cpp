@@ -379,7 +379,7 @@ void PeleLM::initLevelData(int lev) {
       FArrayBox DummyFab(bx,1);
       auto  const &state_arr   = ldata_p->state.array(mfi);
       auto  const &aux_arr   = (m_nAux > 0) ? ldata_p->auxiliaries.array(mfi) : DummyFab.array();
-      amrex::ParallelFor(bx, [=,is_incomp=m_solver==PhysicSolver::Incompressible]
+      amrex::ParallelFor(bx, [=,is_incomp=m_solver==NSSolver::Incompressible]
       AMREX_GPU_DEVICE (int i, int j, int k) noexcept
       {
          pelelm_initdata(i, j, k, is_incomp, state_arr, aux_arr,
@@ -387,7 +387,7 @@ void PeleLM::initLevelData(int lev) {
       });
    }
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       // Initialize thermodynamic pressure
       setThermoPress(lev, AmrNewTime);
       if (m_has_divu) {

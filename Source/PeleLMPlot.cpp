@@ -70,7 +70,7 @@ void PeleLM::WritePlotFile() {
    int ncomp = 0;
 
    // State
-   if (m_solver==PhysicSolver::Incompressible) {
+   if (m_solver==NSSolver::Incompressible) {
       // Velocity + pressure gradients
       ncomp = 2*AMREX_SPACEDIM;
    } else {
@@ -146,7 +146,7 @@ void PeleLM::WritePlotFile() {
    plt_VarsName.push_back("z_velocity");
 #endif
 #endif
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       plt_VarsName.push_back("density");
       if (m_plotStateSpec) {
          for (int n = 0; n < NUM_SPECIES; n++) {
@@ -233,7 +233,7 @@ void PeleLM::WritePlotFile() {
    // Fill the plot MultiFabs
    for (int lev = 0; lev <= finest_level; ++lev) {
       int cnt = 0;
-      if (m_solver==PhysicSolver::Incompressible) {
+      if (m_solver==NSSolver::Incompressible) {
          MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->state, 0, cnt, AMREX_SPACEDIM, 0);
          cnt += AMREX_SPACEDIM;
       } else {
@@ -453,7 +453,7 @@ void PeleLM::WriteCheckPointFile()
       VisMF::Write(m_leveldata_new[lev]->press,
                    amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "p"));
 
-      if (m_solver==PhysicSolver::LowMachNumber) {
+      if (m_solver==NSSolver::LowMachNumber) {
          if (m_has_divu) {
             VisMF::Write(m_leveldata_new[lev]->divu,
                          amrex::MultiFabFileFullPrefix(lev, checkpointname, level_prefix, "divU"));
@@ -636,7 +636,7 @@ void PeleLM::ReadCheckPointFile()
       VisMF::Read(m_leveldata_new[lev]->press,
                   amrex::MultiFabFileFullPrefix(lev, m_restart_chkfile, level_prefix, "p"));
 
-      if (m_solver==PhysicSolver::LowMachNumber) {
+      if (m_solver==NSSolver::LowMachNumber) {
          if (m_has_divu) {
             VisMF::Read(m_leveldata_new[lev]->divu,
                         amrex::MultiFabFileFullPrefix(lev, m_restart_chkfile, level_prefix, "divU"));
@@ -675,7 +675,7 @@ void PeleLM::ReadCheckPointFile()
 void PeleLM::initLevelDataFromPlt(int a_lev,
                                   const std::string &a_dataPltFile)
 {
-   if (m_solver==PhysicSolver::Incompressible) {
+   if (m_solver==NSSolver::Incompressible) {
       Abort(" initializing data from a pltfile only available for low-Mach simulations");
    }
 

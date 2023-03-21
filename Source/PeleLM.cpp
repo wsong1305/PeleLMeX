@@ -10,7 +10,7 @@ PeleLM::PeleLM() = default;
 
 PeleLM::~PeleLM()
 {
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       trans_parms.deallocate();
       m_reactor->close();
    }
@@ -66,7 +66,7 @@ PeleLM::getStateVect(const TimeStamp &a_time) {
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
-      if (m_solver==PhysicSolver::Incompressible) {
+      if (m_solver==NSSolver::Incompressible) {
          for (int lev = 0; lev <= finest_level; ++lev) {
             r.push_back(std::make_unique<MultiFab> (m_leveldata_old[lev]->state,amrex::make_alias,0,AMREX_SPACEDIM));
          }
@@ -76,7 +76,7 @@ PeleLM::getStateVect(const TimeStamp &a_time) {
          }
       }
    } else {
-      if (m_solver==PhysicSolver::Incompressible) {
+      if (m_solver==NSSolver::Incompressible) {
          for (int lev = 0; lev <= finest_level; ++lev) {
             r.push_back(std::make_unique<MultiFab> (m_leveldata_new[lev]->state,amrex::make_alias,0,AMREX_SPACEDIM));
          }
@@ -107,7 +107,7 @@ PeleLM::getVelocityVect(const TimeStamp &a_time) {
 
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getSpeciesVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -124,7 +124,7 @@ PeleLM::getSpeciesVect(const TimeStamp &a_time) {
 
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getDensityVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -147,7 +147,7 @@ PeleLM::getDensityVect(const TimeStamp &a_time) {
 
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getTempVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -164,7 +164,7 @@ PeleLM::getTempVect(const TimeStamp &a_time) {
 
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getRhoHVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -181,7 +181,7 @@ PeleLM::getRhoHVect(const TimeStamp &a_time) {
 
 Vector<MultiFab *>
 PeleLM::getDivUVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<MultiFab*> r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -198,7 +198,7 @@ PeleLM::getDivUVect(const TimeStamp &a_time) {
 
 Vector<MultiFab *>
 PeleLM::getDiffusivityVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<MultiFab*> r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -242,7 +242,7 @@ PeleLM::getIRVect() {
 void
 PeleLM::averageDownState(const PeleLM::TimeStamp &a_time)
 {
-   int nCompState = ( m_solver==PhysicSolver::Incompressible ) ? AMREX_SPACEDIM : NVAR;
+   int nCompState = ( m_solver==NSSolver::Incompressible ) ? AMREX_SPACEDIM : NVAR;
    for (int lev = finest_level; lev > 0; --lev) {
       auto ldataFine_p = getLevelDataPtr(lev,a_time);
       auto ldataCrse_p = getLevelDataPtr(lev-1,a_time);
@@ -339,7 +339,7 @@ PeleLM::averageDownReaction()
 #ifdef PELE_USE_EFIELD
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getPhiVVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {
@@ -356,7 +356,7 @@ PeleLM::getPhiVVect(const TimeStamp &a_time) {
 
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getnEVect(const TimeStamp &a_time) {
-   AMREX_ASSERT(m_solver==PhysicSolver::LowMachNumber);
+   AMREX_ASSERT(m_solver==NSSolver::LowMachNumber);
    Vector<std::unique_ptr<MultiFab> > r;
    r.reserve(finest_level+1);
    if ( a_time == AmrOldTime ) {

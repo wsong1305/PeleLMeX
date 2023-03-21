@@ -15,10 +15,10 @@ struct BoundaryCondition {
 };
 
 /**
-  * \brief struct holding PeleLMeX physic solver options
+  * \brief struct holding PeleLMeX NS solver options
            default is LowMachNumber
   */
-struct PhysicSolver {
+struct NSSolver {
     enum {
         LowMachNumber = 0,
         Incompressible = 1

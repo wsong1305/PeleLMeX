@@ -55,10 +55,10 @@ void PeleLM::getVelForces(const TimeStamp &a_time,
    {
       const auto& bx          = mfi.tilebox();
       const auto& vel_arr     = ldata_p->state.const_array(mfi,VELX);
-      const auto& rho_arr     = (m_solver==PhysicSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,DENSITY);
-      const auto& rhoY_arr    = (m_solver==PhysicSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,FIRSTSPEC);
-      const auto& rhoh_arr    = (m_solver==PhysicSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,RHOH);
-      const auto& temp_arr    = (m_solver==PhysicSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,TEMP);
+      const auto& rho_arr     = (m_solver==NSSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,DENSITY);
+      const auto& rhoY_arr    = (m_solver==NSSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,FIRSTSPEC);
+      const auto& rhoh_arr    = (m_solver==NSSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,RHOH);
+      const auto& temp_arr    = (m_solver==NSSolver::Incompressible) ? Array4<const Real>{} : ldata_p->state.const_array(mfi,TEMP);
       const auto& extmom_arr  = m_extSource[lev]->const_array(mfi,VELX);
       const auto& extrho_arr  = m_extSource[lev]->const_array(mfi,DENSITY);
       const auto& force_arr   = a_velForce->array(mfi);
@@ -73,7 +73,7 @@ void PeleLM::getVelForces(const TimeStamp &a_time,
 #endif
 
       // Add pressure gradient and viscous forces (if req.) and scale by density.
-      int is_incomp = m_solver==PhysicSolver::Incompressible;
+      int is_incomp = m_solver==NSSolver::Incompressible;
       Real incomp_rho_inv = 1.0 / m_rho;
       if ( add_gradP || has_divTau ) {
          const auto& gp_arr     = (add_gradP)  ? ldataGP_p->gp.const_array(mfi) : Array4<const Real>{};
@@ -132,7 +132,7 @@ void PeleLM::getVelForces(int lev,
    int pseudo_gravity    = 0; // TODO ctrl_pseudoGravity;
    const Real dV_control = 0.0; // TODO ctrl_dV;
 
-   int is_incomp   = m_solver==PhysicSolver::Incompressible;
+   int is_incomp   = m_solver==NSSolver::Incompressible;
    Real rho_incomp = m_rho;
 
    amrex::ParallelFor(bx, [=,grav=m_gravity, gp0=m_background_gp]

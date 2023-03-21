@@ -82,7 +82,7 @@ void PeleLM::Setup() {
    resizeArray();
 
    // Initialize EOS and others
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       amrex::Print() << " Initialization of Transport ... \n";
       trans_parms.allocate();
       if (m_les_verbose and m_do_les)
@@ -296,9 +296,9 @@ void PeleLM::readParameters() {
    std::string solver_str{""};
    pp.query("physic_solver", solver_str);
    if ( solver_str == "incompressible" ) {
-      m_solver = PhysicSolver::Incompressible;
+      m_solver = NSSolver::Incompressible;
    }
-   if (m_solver==PhysicSolver::Incompressible) {
+   if (m_solver==NSSolver::Incompressible) {
       m_has_divu = 0;
       m_do_react = 0;
       pp.query("rho", m_rho);
@@ -665,7 +665,7 @@ void PeleLM::variablesSetup() {
 #endif
    Print() << " \n";
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       Print() << " Density: " << DENSITY << "\n";
       stateComponents.emplace_back(DENSITY,"density");
       Print() << " First species: " << FIRSTSPEC << "\n";
@@ -704,7 +704,7 @@ void PeleLM::variablesSetup() {
       }
    }
 
-   if ( m_solver==PhysicSolver::LowMachNumber ) {
+   if ( m_solver==NSSolver::LowMachNumber ) {
       Print() << " => Total number of state variables: " << NVAR << "\n";
    } else {
       Print() << " => Total number of state variables: " << AMREX_SPACEDIM << "\n";
@@ -714,7 +714,7 @@ void PeleLM::variablesSetup() {
 
    //----------------------------------------------------------------
    // Set advection/diffusion types
-   if ( m_solver==PhysicSolver::LowMachNumber ) {
+   if ( m_solver==NSSolver::LowMachNumber ) {
       m_AdvTypeState.resize(NVAR);
       m_DiffTypeState.resize(NVAR);
    } else {
@@ -728,7 +728,7 @@ void PeleLM::variablesSetup() {
       m_DiffTypeState[VELX+idim] = 1;  // Diffusive
    }
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       m_AdvTypeState[DENSITY] = 1;
       m_DiffTypeState[DENSITY] = 0;
       for (int n = 0; n < NUM_SPECIES; ++n) {
@@ -757,13 +757,13 @@ void PeleLM::variablesSetup() {
 
    //----------------------------------------------------------------
    // Typical values container
-   if ( m_solver==PhysicSolver::LowMachNumber ) {
+   if ( m_solver==NSSolver::LowMachNumber ) {
       typical_values.resize(NVAR,-1.0);
    } else {
       typical_values.resize(AMREX_SPACEDIM,-1.0);
    }
 
-   if ( m_solver==PhysicSolver::LowMachNumber ) {
+   if ( m_solver==NSSolver::LowMachNumber ) {
       // -----------------------------------------
       // Combustion
       // -----------------------------------------
@@ -831,7 +831,7 @@ void PeleLM::derivedSetup()
 {
    BL_PROFILE("PeleLM::derivedSetup()");
 
-   if ( m_solver==PhysicSolver::LowMachNumber ) {
+   if ( m_solver==NSSolver::LowMachNumber ) {
 
       // Get species names
       Vector<std::string> spec_names;

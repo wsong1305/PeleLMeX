@@ -298,7 +298,7 @@ void PeleLM::MakeNewLevelFromCoarse( int lev,
    fillcoarsepatch_gradp(lev, time, n_leveldata_new->gp, 0);
    n_leveldata_new->press.setVal(0.0);
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       if (m_has_divu) {
          fillcoarsepatch_divu(lev, time, n_leveldata_new->divu,0);
       }
@@ -316,7 +316,7 @@ void PeleLM::MakeNewLevelFromCoarse( int lev,
       m_leveldatareact[lev] = std::move(n_leveldatareact);
    }
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       // Enforce density / species density consistency
       // only usefull when using cell cons interp
       if (m_regrid_interp_method == 1) {
@@ -400,7 +400,7 @@ void PeleLM::RemakeLevel( int lev,
    fillpatch_gradp(lev, time, n_leveldata_new->gp, 0);
    n_leveldata_new->press.setVal(0.0);
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       if (m_has_divu) {
          fillpatch_divu(lev, time, n_leveldata_new->divu, 1);
       }
@@ -423,7 +423,7 @@ void PeleLM::RemakeLevel( int lev,
    }
    m_resetCoveredMask = 1;
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       // Enforce density / species density consistency
       // only usefull when using cell cons interp
       if (m_regrid_interp_method == 1) {

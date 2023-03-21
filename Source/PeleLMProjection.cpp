@@ -21,7 +21,7 @@ void PeleLM::initialProjection()
 
    // Get sigma : density if not incompressible
    Vector<std::unique_ptr<MultiFab>> sigma(finest_level+1);
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       for (int lev = 0; lev <= finest_level; ++lev ) {
 
          sigma[lev].reset(new MultiFab(grids[lev], dmap[lev], 1, nGhost, MFInfo(), *m_factory[lev]));
@@ -57,7 +57,7 @@ void PeleLM::initialProjection()
    // Get RHS cc: - divU (- \int{divU})
    Real Sbar = 0.0;
    Vector<MultiFab> rhs_cc(finest_level+1);
-   if (m_solver==PhysicSolver::LowMachNumber && m_has_divu ) {
+   if (m_solver==NSSolver::LowMachNumber && m_has_divu ) {
       // Ensure integral of RHS is zero for closed chamber
       if (m_closed_chamber) {
          Sbar = MFSum(GetVecOfConstPtrs(getDivUVect(AmrNewTime)),0);
@@ -82,7 +82,7 @@ void PeleLM::initialProjection()
       auto ldata_p = getLevelDataPtr(lev,AmrNewTime);
       ldata_p->press.setVal(0.0);
       ldata_p->gp.setVal(0.0);
-      if (m_solver==PhysicSolver::LowMachNumber && m_has_divu ) {
+      if (m_solver==NSSolver::LowMachNumber && m_has_divu ) {
          m_leveldata_new[lev]->divu.mult(-1.0,0,1,rhs_cc[lev].nGrow());
          // Restore divU integral
          if (m_closed_chamber) {
@@ -123,7 +123,7 @@ void PeleLM::initialPressProjection()
 
    // Get sigma : density if not incompressible
    Vector<std::unique_ptr<MultiFab>> sigma(finest_level+1);
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       for (int lev = 0; lev <= finest_level; ++lev ) {
 
          sigma[lev].reset(new MultiFab(grids[lev], dmap[lev], 1, nGhost, MFInfo(), *m_factory[lev]));
@@ -174,7 +174,7 @@ void PeleLM::velocityProjection(int is_initIter,
 
    // Get sigma : scaled density inv. if not incompressible
    Vector<std::unique_ptr<MultiFab> > sigma(finest_level+1);
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       Vector<std::unique_ptr<MultiFab> > rhoHalf(finest_level+1);
       rhoHalf = getDensityVect(a_rhoTime);
       for (int lev = 0; lev <= finest_level; ++lev ) {
@@ -203,7 +203,7 @@ void PeleLM::velocityProjection(int is_initIter,
 
    if (!incremental) {
       Vector<std::unique_ptr<MultiFab> > rhoHalf(finest_level+1);
-      if (m_solver==PhysicSolver::LowMachNumber) {
+      if (m_solver==NSSolver::LowMachNumber) {
          rhoHalf = getDensityVect(a_rhoTime);
       }
       for (int lev = 0; lev <= finest_level; ++lev ) {
@@ -218,9 +218,9 @@ void PeleLM::velocityProjection(int is_initIter,
             Box const& bx = mfi.tilebox();
             auto const& vel_arr = ldataNew_p->state.array(mfi,VELX);
             auto const& gp_arr  = ldataOld_p->gp.const_array(mfi);
-            auto const& rho_arr = (m_solver==PhysicSolver::Incompressible) ? Array4<Real const>{} : rhoHalf[lev]->const_array(mfi);
+            auto const& rho_arr = (m_solver==NSSolver::Incompressible) ? Array4<Real const>{} : rhoHalf[lev]->const_array(mfi);
             amrex::ParallelFor(bx, [vel_arr,gp_arr,rho_arr,a_dt,
-                                    is_incomp=m_solver==PhysicSolver::Incompressible,rho=m_rho]
+                                    is_incomp=m_solver==NSSolver::Incompressible,rho=m_rho]
             AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                Real soverrho = (is_incomp) ? a_dt / rho
@@ -260,7 +260,7 @@ void PeleLM::velocityProjection(int is_initIter,
    // To ensure integral of RHS is zero for closed chamber, get mean divU
    Real SbarOld = 0.0;
    Real SbarNew = 0.0;
-   if (m_closed_chamber && m_solver==PhysicSolver::LowMachNumber) {
+   if (m_closed_chamber && m_solver==NSSolver::LowMachNumber) {
       SbarNew = MFSum(GetVecOfConstPtrs(getDivUVect(AmrNewTime)),0);
       SbarNew /= m_uncoveredVol;        // Transform in Mean.
       if (incremental) {
@@ -271,7 +271,7 @@ void PeleLM::velocityProjection(int is_initIter,
 
    // Get RHS cc
    Vector<MultiFab> rhs_cc;
-   if (m_solver==PhysicSolver::LowMachNumber && m_has_divu ) {
+   if (m_solver==NSSolver::LowMachNumber && m_has_divu ) {
       rhs_cc.resize(finest_level+1);
       for (int lev = 0; lev <= finest_level; ++lev) {
          if (!incremental) {
@@ -382,7 +382,7 @@ void PeleLM::doNodalProject(const Vector<MultiFab*> &a_vel,
    // Setup NodalProjector
    std::unique_ptr<Hydro::NodalProjector> nodal_projector;
 
-   if ( m_solver==PhysicSolver::Incompressible ) {
+   if ( m_solver==NSSolver::Incompressible ) {
       Real constant_sigma = scaling_factor / m_rho;
       nodal_projector.reset(new Hydro::NodalProjector(a_vel, constant_sigma, Geom(0,finest_level), info));
    } else {

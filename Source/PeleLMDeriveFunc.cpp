@@ -19,7 +19,7 @@ void pelelm_dertemp (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int dco
     AMREX_ASSERT(derfab.box().contains(bx));
     AMREX_ASSERT(statefab.box().contains(bx));
     AMREX_ASSERT(derfab.nComp() >= dcomp + ncomp);
-    AMREX_ASSERT(a_pelelm->m_solver==PhysicSolver::LowMachNumber);
+    AMREX_ASSERT(a_pelelm->m_solver==NSSolver::LowMachNumber);
     auto const in_dat = statefab.array();
     auto       der = derfab.array(dcomp);
     amrex::ParallelFor(bx,
@@ -41,7 +41,7 @@ void pelelm_derheatrelease (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, 
     AMREX_ASSERT(derfab.box().contains(bx));
     AMREX_ASSERT(statefab.box().contains(bx));
     AMREX_ASSERT(derfab.nComp() >= dcomp + ncomp);
-    AMREX_ASSERT(a_pelelm->m_solver==PhysicSolver::LowMachNumber);
+    AMREX_ASSERT(a_pelelm->m_solver==NSSolver::LowMachNumber);
 
     FArrayBox EnthFab;
     EnthFab.resize(bx,NUM_SPECIES,The_Async_Arena());
@@ -75,7 +75,7 @@ void pelelm_dermassfrac (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int
     AMREX_ASSERT(derfab.nComp() >= dcomp + ncomp);
     AMREX_ASSERT(statefab.nComp() >= NUM_SPECIES+1);
     AMREX_ASSERT(ncomp == NUM_SPECIES);
-    AMREX_ASSERT(a_pelelm->m_solver==PhysicSolver::LowMachNumber);
+    AMREX_ASSERT(a_pelelm->m_solver==NSSolver::LowMachNumber);
     auto const in_dat = statefab.array();
     auto       der = derfab.array(dcomp);
     amrex::ParallelFor(bx, NUM_SPECIES,
@@ -99,7 +99,7 @@ void pelelm_dermolefrac (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int
     AMREX_ASSERT(derfab.nComp() >= dcomp + ncomp);
     AMREX_ASSERT(statefab.nComp() >= NUM_SPECIES+1);
     AMREX_ASSERT(ncomp == NUM_SPECIES);
-    AMREX_ASSERT(a_pelelm->m_solver==PhysicSolver::LowMachNumber);
+    AMREX_ASSERT(a_pelelm->m_solver==NSSolver::LowMachNumber);
     auto const in_dat = statefab.array();
     auto       der = derfab.array(dcomp);
     amrex::ParallelFor(bx,
@@ -132,7 +132,7 @@ void pelelm_derrhomrhoy (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int
     AMREX_ASSERT(statefab.box().contains(bx));
     AMREX_ASSERT(derfab.nComp() >= dcomp + ncomp);
     AMREX_ASSERT(statefab.nComp() >= NUM_SPECIES+1);
-    AMREX_ASSERT(a_pelelm->m_solver==PhysicSolver::LowMachNumber);
+    AMREX_ASSERT(a_pelelm->m_solver==NSSolver::LowMachNumber);
     auto const in_dat = statefab.array();
     auto       der = derfab.array(dcomp);
     amrex::ParallelFor(bx,
@@ -383,7 +383,7 @@ void pelelm_derkineticenergy (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab
 {
     AMREX_ASSERT(derfab.box().contains(bx));
     AMREX_ASSERT(statefab.box().contains(bx));
-    if (a_pelelm->m_solver==PhysicSolver::Incompressible) {
+    if (a_pelelm->m_solver==NSSolver::Incompressible) {
        auto const vel = statefab.array(VELX);
        auto       der = derfab.array(dcomp);
        amrex::ParallelFor(bx,
@@ -426,7 +426,7 @@ void pelelm_derenstrophy (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, in
     // TODO : EB
     // TODO : BCs
 
-    if (a_pelelm->m_solver==PhysicSolver::Incompressible) {
+    if (a_pelelm->m_solver==NSSolver::Incompressible) {
         auto const&  dat_arr = statefab.const_array(VELX);
         auto const&  ens_arr = derfab.array(dcomp);
         amrex::ParallelFor(bx, [=,rho=a_pelelm->m_rho] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -574,7 +574,7 @@ void pelelm_dervisc (PeleLM* a_pelelm, const Box& bx, FArrayBox& derfab, int dco
     AMREX_ASSERT(statefab.box().contains(bx));
     AMREX_ASSERT(derfab.nComp() >= dcomp + ncomp);
 
-    if (a_pelelm->m_solver==PhysicSolver::Incompressible) {
+    if (a_pelelm->m_solver==NSSolver::Incompressible) {
         derfab.setVal<RunOn::Device>(a_pelelm->m_mu,bx,dcomp,1);
     } else {
         auto const& rhoY = statefab.const_array(FIRSTSPEC);

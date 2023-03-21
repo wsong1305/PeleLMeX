@@ -592,10 +592,12 @@ void PeleLM::resetCoveredMask()
 
       // Switch off trigger
       m_resetCoveredMask = 0;
+
    } else {
       // Load balance the chem. distribution map
       if (m_doLoadBalance) {
          for (int lev = 0; lev <= finest_level; ++lev) {
+             // Finest grid uses AmrCore DM, already balanced
              if ( lev == finest_level && m_max_grid_size_chem.min() < 0 ) {
                  continue;
              }
@@ -712,7 +714,7 @@ PeleLM::derive(const std::string &a_name,
           const Box& bx = mfi.growntilebox(nGrow);
           FArrayBox& derfab = (*mf)[mfi];
           FArrayBox const& statefab = (*statemf)[mfi];
-          FArrayBox const& reactfab = (m_solver==PhysicSolver::Incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
+          FArrayBox const& reactfab = (m_solver==NSSolver::Incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
           FArrayBox const& pressfab = ldata_p->press[mfi];
           rec->derFunc()(this, bx, derfab, 0, rec->numDerive(), statefab, reactfab, pressfab, geom[lev], a_time, stateBCs, lev);
       }
@@ -770,7 +772,7 @@ PeleLM::deriveComp(const std::string &a_name,
           const Box& bx = mfi.growntilebox(nGrow);
           FArrayBox& derfab = derTemp[mfi];
           FArrayBox const& statefab = (*statemf)[mfi];
-          FArrayBox const& reactfab = (m_solver==PhysicSolver::Incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
+          FArrayBox const& reactfab = (m_solver==NSSolver::Incompressible) ? ldata_p->press[mfi] : ldataR_p->I_R[mfi];
           FArrayBox const& pressfab = ldata_p->press[mfi];
           rec->derFunc()(this, bx, derfab, 0, rec->numDerive(), statefab, reactfab, pressfab, geom[lev], a_time, stateBCs, lev);
       }
@@ -1117,9 +1119,9 @@ PeleLM::MFStat (const Vector<const MultiFab*> &a_mf, int comp)
 void PeleLM::setTypicalValues(const TimeStamp &a_time, int is_init)
 {
     // Get state Max/Min
-    auto stateMax = ( m_solver==PhysicSolver::LowMachNumber ) ? MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR)
+    auto stateMax = ( m_solver==NSSolver::LowMachNumber ) ? MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR)
                                                               : MLmax(GetVecOfConstPtrs(getStateVect(a_time)),0,AMREX_SPACEDIM);
-    auto stateMin = ( m_solver==PhysicSolver::LowMachNumber ) ? MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR)
+    auto stateMin = ( m_solver==NSSolver::LowMachNumber ) ? MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,NVAR)
                                                               : MLmin(GetVecOfConstPtrs(getStateVect(a_time)),0,AMREX_SPACEDIM);
 
     // Fill typical values vector
@@ -1127,7 +1129,7 @@ void PeleLM::setTypicalValues(const TimeStamp &a_time, int is_init)
        typical_values[idim] = std::max(stateMax[VELX+idim],std::abs(stateMin[VELX+idim]));
     }
 
-    if (m_solver==PhysicSolver::LowMachNumber) {
+    if (m_solver==NSSolver::LowMachNumber) {
         // Average between max/min
         typical_values[DENSITY] = 0.5 * (stateMax[DENSITY] + stateMin[DENSITY]);
         for (int n = 0; n < NUM_SPECIES; n++) {
@@ -1153,7 +1155,7 @@ void PeleLM::setTypicalValues(const TimeStamp &a_time, int is_init)
             Print() << typical_values[idim] << ' ';
         }
         Print() << '\n';
-        if (m_solver==PhysicSolver::LowMachNumber) {
+        if (m_solver==NSSolver::LowMachNumber) {
             Print() << "\tDensity:  " << typical_values[DENSITY] << '\n';
             Print() << "\tTemp:     " << typical_values[TEMP]    << '\n';
             Print() << "\tH:        " << typical_values[RHOH]    << '\n';

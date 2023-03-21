@@ -96,7 +96,7 @@ void PeleLM::Advance(int is_initIter) {
 
    // compute t^{n} data
    calcViscosity(AmrOldTime);
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       calcDiffusivity(AmrOldTime);
 #ifdef PELE_USE_EFIELD
       poissonSolveEF(AmrOldTime);
@@ -119,7 +119,7 @@ void PeleLM::Advance(int is_initIter) {
    }
 #endif
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       floorSpecies(AmrOldTime);
 
       //----------------------------------------------------------------
@@ -138,7 +138,7 @@ void PeleLM::Advance(int is_initIter) {
    BL_PROFILE_VAR_START(PLM_SETUP);
    //----------------------------------------------------------------
    copyTransportOldToNew();
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       copyDiffusionOldToNew(diffData);
 #ifdef PELE_USE_EFIELD
       ionDriftVelocity(advData);
@@ -151,7 +151,7 @@ void PeleLM::Advance(int is_initIter) {
 
    //----------------------------------------------------------------
    // Scalar advance
-   if ( m_solver==PhysicSolver::Incompressible ) {
+   if ( m_solver==NSSolver::Incompressible ) {
       Real MACStart = 0.0;
       if (m_verbose > 1) {
          MACStart = ParallelDescriptor::second();
@@ -203,7 +203,7 @@ void PeleLM::Advance(int is_initIter) {
       VelAdvStart = ParallelDescriptor::second();
    }
    // Re-evaluate viscosity only if scalar updated
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       calcViscosity(AmrNewTime);
    }
 

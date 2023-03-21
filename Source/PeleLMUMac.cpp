@@ -134,7 +134,7 @@ void PeleLM::macProject(const TimeStamp &a_time,
    Vector<Array<MultiFab,AMREX_SPACEDIM>> rho_inv(finest_level+1);
    for (int lev = 0; lev <= finest_level; ++lev)
    {
-      if (m_solver==PhysicSolver::Incompressible) {
+      if (m_solver==NSSolver::Incompressible) {
          Real rhoInv = m_dt/(2.0*m_rho);
          for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             rho_inv[lev][idim].define(amrex::convert(grids[lev],IntVect::TheDimensionVector(idim)),
@@ -154,7 +154,7 @@ void PeleLM::macProject(const TimeStamp &a_time,
 
    // For closed chamber, compute change in chamber pressure
    Real Sbar = 0.0;
-   if (m_closed_chamber && m_solver==PhysicSolver::LowMachNumber) {
+   if (m_closed_chamber && m_solver==NSSolver::LowMachNumber) {
       Sbar = adjustPandDivU(advData);
    }
 
@@ -180,7 +180,7 @@ void PeleLM::macProject(const TimeStamp &a_time,
    macproj->project(m_mac_mg_rtol,m_mac_mg_atol);
 
    // Restore mac_divu
-   if (m_closed_chamber && m_solver==PhysicSolver::LowMachNumber) {
+   if (m_closed_chamber && m_solver==NSSolver::LowMachNumber) {
       for (int lev = 0; lev <= finest_level; ++lev) {
          a_divu[lev]->plus(Sbar,0,1);
       }

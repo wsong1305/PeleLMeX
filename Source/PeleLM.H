@@ -1148,7 +1148,7 @@ class PeleLM : public amrex::AmrCore {
    std::string m_run_mode {"normal"};
 
    // Incompressible ?
-   int m_solver {PhysicSolver::LowMachNumber};
+   int m_solver {NSSolver::LowMachNumber};
    amrex::Real m_rho {-1.0};
    amrex::Real m_mu {-1.0};
 

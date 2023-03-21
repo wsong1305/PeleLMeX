@@ -26,7 +26,7 @@ PeleLM::computeDt(int is_init,
          Real dtconv = estConvectiveDt(a_time);
          estdt = std::min(estdt,dtconv);
          Real dtdivU = 1.0e200;
-         if (m_solver==PhysicSolver::LowMachNumber && m_has_divu) {
+         if (m_solver==NSSolver::LowMachNumber && m_has_divu) {
             dtdivU = estDivUDt(a_time);
             estdt = std::min(estdt,dtdivU);
          }

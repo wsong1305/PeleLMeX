@@ -142,7 +142,7 @@ void PeleLM::setBoundaryConditions() {
       }
    }
 
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       // Density
       for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
          m_bcrec_state[DENSITY].setLo(idim,density_bc[lo_bc[idim]]);
@@ -256,7 +256,7 @@ void PeleLM::fillPatchState(int lev, const TimeStamp &a_time) {
    Real time = getTime(lev, a_time);
 
    fillpatch_state(lev, time, ldata_p->state, m_nGrowState);
-   if (m_solver==PhysicSolver::LowMachNumber) {
+   if (m_solver==NSSolver::LowMachNumber) {
       if (m_has_divu) {
          fillpatch_divu(lev, time, ldata_p->divu, ldata_p->divu.nGrow());
       }
@@ -312,7 +312,7 @@ PeleLM::fillPatchState(int lev, Real a_time, int nGrow) {
    BL_PROFILE("PeleLM::fillPatchState()");
 
    std::unique_ptr<MultiFab> mf;
-   if ( m_solver==PhysicSolver::Incompressible ) {
+   if ( m_solver==NSSolver::Incompressible ) {
       mf.reset(new MultiFab(grids[lev], dmap[lev], AMREX_SPACEDIM, nGrow));
    } else {
       mf.reset(new MultiFab(grids[lev], dmap[lev], NVAR, nGrow));
@@ -332,7 +332,7 @@ void PeleLM::fillpatch_state(int lev,
    ProbParm const* lprobparm = prob_parm_d;
    pele::physics::PMF::PmfData::DataContainer const* lpmfdata = pmf_data.getDeviceData();
 
-   int nCompState = ( m_solver==PhysicSolver::Incompressible ) ? AMREX_SPACEDIM : NVAR;
+   int nCompState = ( m_solver==NSSolver::Incompressible ) ? AMREX_SPACEDIM : NVAR;
 
    fillTurbInflow(a_state, VELX, lev, a_time);
 
@@ -677,7 +677,7 @@ void PeleLM::fillcoarsepatch_state(int lev,
    ProbParm const* lprobparm = prob_parm_d;
    pele::physics::PMF::PmfData::DataContainer const* lpmfdata = pmf_data.getDeviceData();
 
-   int nCompState = ( m_solver==PhysicSolver::Incompressible ) ? AMREX_SPACEDIM : NVAR;
+   int nCompState = ( m_solver==NSSolver::Incompressible ) ? AMREX_SPACEDIM : NVAR;
 
    fillTurbInflow(a_state, VELX, lev, a_time);
 

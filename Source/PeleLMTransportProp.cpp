@@ -47,7 +47,7 @@ void PeleLM::calcTurbViscosity(const TimeStamp &a_time) {
      const auto& ba = ldata_p->state.boxArray();
      const auto& dm = ldata_p->state.DistributionMap();
      const auto& factory = ldata_p->state.Factory();
-     if (m_solver==PhysicSolver::Incompressible) {
+     if (m_solver==NSSolver::Incompressible) {
        // just set density as a constant; don't need to worry about cp
        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
          dens_fc[idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)), dm,
@@ -120,7 +120,7 @@ void PeleLM::calcTurbViscosity(const TimeStamp &a_time) {
        Gpu::streamSynchronize();
 
        // Compute lambda_turb = alpha_t * cp = mu_t / Pr_t * cp
-       if (m_solver==PhysicSolver::LowMachNumber) {
+       if (m_solver==NSSolver::LowMachNumber) {
          amrex::MultiFab::Copy(ldata_p->lambda_turb_fc[idim], ldata_p->visc_turb_fc[idim], 0, 0, 1, 0);
          amrex::MultiFab::Multiply(ldata_p->lambda_turb_fc[idim], cp_fc[idim], 0, 0, 1, 0);
          ldata_p->lambda_turb_fc[idim].mult(m_Prandtl_inv);
@@ -136,7 +136,7 @@ void PeleLM::calcViscosity(const TimeStamp &a_time) {
 
       auto ldata_p = getLevelDataPtr(lev,a_time);
 
-      if (m_solver==PhysicSolver::LowMachNumber) {
+      if (m_solver==NSSolver::LowMachNumber) {
          // Transport data pointer
          auto const* ltransparm = trans_parms.device_trans_parm();
 

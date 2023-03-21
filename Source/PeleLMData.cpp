@@ -8,7 +8,7 @@ PeleLM::LevelData::LevelData(amrex::BoxArray const& ba,
                              int a_solver, int a_has_divu,
                              int a_nAux, int a_nGrowState, int a_use_soret, int a_do_les)
 {
-   if (a_solver==PhysicSolver::LowMachNumber) {
+   if (a_solver==NSSolver::LowMachNumber) {
        state.define(  ba, dm, NVAR           , a_nGrowState, MFInfo(), factory);
    } else {
        state.define(  ba, dm, AMREX_SPACEDIM , a_nGrowState, MFInfo(), factory);
@@ -20,12 +20,12 @@ PeleLM::LevelData::LevelData(amrex::BoxArray const& ba,
    if (a_do_les) {
      for (int i = 0; i < AMREX_SPACEDIM; ++i) {
        visc_turb_fc[i].define(amrex::convert(ba,IntVect::TheDimensionVector(i)), dm, 1, 0, MFInfo(), factory);
-       if (a_solver==PhysicSolver::LowMachNumber) {
+       if (a_solver==NSSolver::LowMachNumber) {
          lambda_turb_fc[i].define(amrex::convert(ba,IntVect::TheDimensionVector(i)), dm, 1, 0, MFInfo(), factory);
        }
      }
    }
-   if (a_solver==PhysicSolver::LowMachNumber) {
+   if (a_solver==NSSolver::LowMachNumber) {
       if (a_has_divu) {
          divu.define (ba, dm, 1             , 1           , MFInfo(), factory);
       }
@@ -140,7 +140,7 @@ PeleLM::AdvanceAdvData::AdvanceAdvData(int a_finestLevel,
    // Resize Vectors
    umac.resize(a_finestLevel+1);
    AofS.resize(a_finestLevel+1);
-   if ( a_solver==PhysicSolver::LowMachNumber ) {
+   if ( a_solver==NSSolver::LowMachNumber ) {
       chi.resize(a_finestLevel+1);
       Forcing.resize(a_finestLevel+1);
       mac_divu.resize(a_finestLevel+1);
@@ -158,7 +158,7 @@ PeleLM::AdvanceAdvData::AdvanceAdvData(int a_finestLevel,
          uDrift[lev][idim].define(faceba,dm[lev], NUM_IONS, nGrowMAC, MFInfo(), *factory[lev]);
 #endif
       }
-      if ( a_solver==PhysicSolver::Incompressible ) {
+      if ( a_solver==NSSolver::Incompressible ) {
          AofS[lev].define(ba[lev], dm[lev], AMREX_SPACEDIM , 0, MFInfo(), *factory[lev]);
       } else {
          AofS[lev].define(ba[lev], dm[lev], NVAR , 0, MFInfo(), *factory[lev]);
@@ -177,7 +177,7 @@ void
 PeleLM::copyStateNewToOld(int nGhost) {
    AMREX_ASSERT(nGhost<=m_nGrowState);
    for (int lev = 0; lev <= finest_level; lev++ ) {
-      if ( m_solver==PhysicSolver::Incompressible ) {
+      if ( m_solver==NSSolver::Incompressible ) {
          MultiFab::Copy(m_leveldata_old[lev]->state,m_leveldata_new[lev]->state,0,0,AMREX_SPACEDIM,nGhost);
       } else {
          MultiFab::Copy(m_leveldata_old[lev]->state,m_leveldata_new[lev]->state,0,0,NVAR,nGhost);
@@ -200,7 +200,7 @@ void
 PeleLM::copyStateOldToNew(int nGhost) {
    AMREX_ASSERT(nGhost<=m_nGrowState);
    for (int lev = 0; lev <= finest_level; lev++ ) {
-      if ( m_solver==PhysicSolver::Incompressible ) {
+      if ( m_solver==NSSolver::Incompressible ) {
          MultiFab::Copy(m_leveldata_new[lev]->state,m_leveldata_old[lev]->state,0,0,AMREX_SPACEDIM,nGhost);
       } else {
          MultiFab::Copy(m_leveldata_new[lev]->state,m_leveldata_old[lev]->state,0,0,NVAR,nGhost);
@@ -216,7 +216,7 @@ void
 PeleLM::copyTransportOldToNew() {
    for (int lev = 0; lev <= finest_level; lev++ ) {
       MultiFab::Copy(m_leveldata_new[lev]->visc_cc,m_leveldata_old[lev]->visc_cc,0,0,1,1);
-      if ( m_solver==PhysicSolver::LowMachNumber ) {
+      if ( m_solver==NSSolver::LowMachNumber ) {
          MultiFab::Copy(m_leveldata_new[lev]->diff_cc,m_leveldata_old[lev]->diff_cc,0,0,NUM_SPECIES+2,1);
 #ifdef PELE_USE_EFIELD
          MultiFab::Copy(m_leveldata_new[lev]->diffE_cc,m_leveldata_old[lev]->diffE_cc,0,0,1,1);
