@@ -92,7 +92,7 @@ void PeleLM::MakeNewLevelFromScratch( int lev,
    m_costs[lev] = std::make_unique<LayoutData<Real>>(ba, dm);
 
    // Mac projector
-#if AMREX_USE_EB
+#ifdef AMREX_USE_EB
    macproj.reset(new Hydro::MacProjector(Geom(0,finest_level),
                                          MLMG::Location::FaceCentroid,  // Location of mac velocity
                                          MLMG::Location::FaceCentroid,  // Location of beta
@@ -105,7 +105,7 @@ void PeleLM::MakeNewLevelFromScratch( int lev,
                                        MFInfo(), *m_factory[lev]));
    m_extSource[lev]->setVal(0.);
 
-#if AMREX_USE_EB
+#ifdef AMREX_USE_EB
    if ( lev == 0 && m_signDistNeeded) {
       // Set up CC signed distance container to control EB refinement
       m_signedDist0.reset(new MultiFab(grids[lev], dmap[lev], 1, 1, MFInfo(), *m_factory[lev]));
