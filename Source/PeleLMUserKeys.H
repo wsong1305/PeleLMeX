@@ -73,8 +73,10 @@ struct LoadBalanceCost {
         Ncell = 0,
         ChemFunctCallAvg = 1,
         ChemFunctCallMax = 2,
-        UserDefinedDerived = 3,
-        Timers = 4
+        ChemFunctCallSum = 3,
+        UserDefinedDerivedAvg = 4,
+        UserDefinedDerivedSum = 5,
+        Timers = 6
     };
 };
 
