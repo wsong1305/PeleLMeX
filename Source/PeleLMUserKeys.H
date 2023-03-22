@@ -1,18 +1,37 @@
+#ifndef PELE_USERKEYS_H
+#define PELE_USERKEYS_H
+#include <AMReX_Array.H>
+
+#include <string>
+#include <map>
+
 /**
   * \brief struct holding PeleLMeX physical BC options
   */
 struct BoundaryCondition {
     enum {
         BCInterior = 0,
-        BCInflow = 1,
-        BCOutflow = 2,
-        BCSymmetry = 3,
-        BCSlipWallAdiab = 4,
-        BCNoSlipWallAdiab = 5,
-        BCSlipWallIsotherm = 6,
-        BCNoSlipWallIsotherm = 7
+        BCInflow,
+        BCOutflow,
+        BCSymmetry,
+        BCSlipWallAdiab,
+        BCNoSlipWallAdiab,
+        BCSlipWallIsotherm,
+        BCNoSlipWallIsotherm
     };
+    const std::map<const std::string, int> str2int = {
+        {"interior", BCInterior},
+        {"inflow", BCInflow},
+        {"outflow", BCOutflow},
+        {"symmetry", BCSymmetry},
+        {"slipwalladiab", BCSlipWallAdiab},
+        {"noslipwalladiab", BCNoSlipWallAdiab},
+        {"bcslipwallisotherm", BCSlipWallIsotherm},
+        {"bcnoslipwallisotherm", BCNoSlipWallIsotherm}
+    };
+    const amrex::Array<std::string,2> searchKey{"lo_bc","hi_bc"};
 };
+const BoundaryCondition boundarycondition;
 
 /**
   * \brief struct holding PeleLMeX NS solver options
@@ -21,9 +40,16 @@ struct BoundaryCondition {
 struct NSSolver {
     enum {
         LowMachNumber = 0,
-        Incompressible = 1
+        Incompressible
     };
+    const std::map<std::string, int> str2int = {
+        {"lowmachnumber", LowMachNumber},
+        {"incompressible", Incompressible},
+        {"default", LowMachNumber}
+    };
+    const amrex::Array<std::string,1> searchKey{"ns_solver"};
 };
+const NSSolver nssolver;
 
 /**
   * \brief struct holding PeleLMeX interpolator options
@@ -32,10 +58,18 @@ struct NSSolver {
 struct Interpolator {
     enum {
         PiecewiseLinearConserv = 0,
-        PiecewiseLinearConservMinMax = 1,
-        PiecewiseConstant = 2
+        PiecewiseLinearConservMinMax,
+        PiecewiseConstant
     };
+    const std::map<const std::string, int> str2int = {
+        {"pwlinearconserv", PiecewiseLinearConserv},
+        {"pwlinearconservminmax", PiecewiseLinearConservMinMax},
+        {"pwconstant", PiecewiseConstant},
+        {"default", PiecewiseLinearConserv}
+    };
+    const amrex::Array<std::string,1> searchKey{"regrid_interp_method"};
 };
+const Interpolator interpolator;
 
 /**
   * \brief struct holding PeleLMeX LES SGS model options
@@ -44,11 +78,20 @@ struct Interpolator {
 struct LESModel {
     enum {
         None = 0,
-        Smagorinsky = 1,
-        WALE = 2,
-        Sigma = 3
+        Smagorinsky,
+        WALE,
+        Sigma
     };
+    const std::map<const std::string, int> str2int = {
+        {"none", None},
+        {"smagorinsky", Smagorinsky},
+        {"wale", WALE},
+        {"sigma", Sigma},
+        {"default", None}
+    };
+    const amrex::Array<std::string,1> searchKey{"les_model"};
 };
+const LESModel lesmodel;
 
 /**
   * \brief struct holding PeleLMeX advection scheme options
@@ -57,28 +100,50 @@ struct LESModel {
 struct AdvectionScheme {
     enum {
         Godunov_PLM = 0,
-        Godunov_PPM = 1,
-        Godunov_PPM_WENOZ = 2,
-        Godunov_PPM_NOLIM = 3,
-        Godunov_BDS = 4
+        Godunov_PPM,
+        Godunov_PPM_WENOZ,
+        Godunov_PPM_NOLIM,
+        Godunov_BDS
     };
+    const std::map<const std::string, int> str2int = {
+        {"godunov_plm", Godunov_PLM},
+        {"godunov_ppm", Godunov_PPM},
+        {"godunov_ppm_wenoz", Godunov_PPM_WENOZ},
+        {"godunov_ppm_nolim", Godunov_PPM_NOLIM},
+        {"godunov_bds", Godunov_BDS},
+        {"default", Godunov_PLM}
+    };
+    const amrex::Array<std::string,1> searchKey{"advection_scheme"};
 };
+const AdvectionScheme advscheme;
 
 /**
   * \brief struct holding PeleLMeX load balancing cost options
-           default is None
+           default is Ncell
   */
 struct LoadBalanceCost {
     enum {
         Ncell = 0,
-        ChemFunctCallAvg = 1,
-        ChemFunctCallMax = 2,
-        ChemFunctCallSum = 3,
-        UserDefinedDerivedAvg = 4,
-        UserDefinedDerivedSum = 5,
-        Timers = 6
+        ChemFunctCallAvg,
+        ChemFunctCallMax,
+        ChemFunctCallSum,
+        UserDefinedDerivedAvg,
+        UserDefinedDerivedSum,
+        Timers
     };
+    const std::map<const std::string, int> str2int = {
+        {"ncell", Ncell},
+        {"chemfunctcall_avg", ChemFunctCallAvg},
+        {"chemfunctcall_max", ChemFunctCallMax},
+        {"chemfunctcall_sum", ChemFunctCallSum},
+        {"userdefined_avg", UserDefinedDerivedAvg},
+        {"userdefined_sum", UserDefinedDerivedSum},
+        {"default", Ncell}
+    };
+    const amrex::Array<std::string,2> searchKey{"load_balancing_cost_estimate",
+                                                "chem_load_balancing_cost_estimate"};
 };
+const LoadBalanceCost lbcost;
 
 /**
   * \brief struct holding PeleLMeX load balancing method options
@@ -87,7 +152,17 @@ struct LoadBalanceCost {
 struct LoadBalanceMethod {
     enum {
         SFC = 0,
-        Knapsack = 1,
-        RoundRobin = 2
+        Knapsack,
+        RoundRobin
     };
+    const std::map<const std::string, int> str2int = {
+        {"sfc", SFC},
+        {"knapsack", Knapsack},
+        {"roundrobin", RoundRobin},
+        {"default", SFC}
+    };
+    const amrex::Array<std::string,2> searchKey{"load_balancing_method",
+                                                "chem_load_balancing_method"};
 };
+const LoadBalanceMethod lbmethod;
+#endif

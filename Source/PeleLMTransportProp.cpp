@@ -15,8 +15,7 @@ void PeleLM::calcTurbViscosity(const TimeStamp &a_time) {
    AMREX_ALWAYS_ASSERT(m_do_les);
 
    if (m_les_verbose > 0) {
-     amrex::Print() << "   Computing Turbulent Viscosity with LES model: " << m_les_model
-                    << " for time " << getTime(0, a_time) << std::endl;
+     amrex::Print() << "   Computing Turbulent Viscosity for time " << getTime(0, a_time) << std::endl;
    }
 
    // Create temporary multifab to store velocity gradient tensor
@@ -86,7 +85,7 @@ void PeleLM::calcTurbViscosity(const TimeStamp &a_time) {
        const amrex::Real l_scale = std::sqrt(AMREX_D_TERM(geom[lev].CellSize(0)*geom[lev].CellSize(0),
                                                           + geom[lev].CellSize(1)*geom[lev].CellSize(1),
                                                           + geom[lev].CellSize(2)*geom[lev].CellSize(2)));
-       if (m_les_model == "Smagorinsky") {
+       if (m_les_model == LESModel::Smagorinsky) {
          const amrex::Real prefact = m_les_cs_smag * m_les_cs_smag * l_scale * l_scale;
          amrex::ParallelFor(ldata_p->visc_turb_fc[idim], ldata_p->visc_turb_fc[idim].nGrowVect(), [=]
                             AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
@@ -96,7 +95,7 @@ void PeleLM::calcTurbViscosity(const TimeStamp &a_time) {
                                                       Array4<Real const>(dens_arr[box_no]),
                                                       Array4<Real      >(mut_arr[box_no]) );
                             });
-       } else if (m_les_model == "WALE") {
+       } else if (m_les_model == LESModel::WALE) {
          const amrex::Real prefact = m_les_cm_wale * m_les_cm_wale * l_scale * l_scale;
          amrex::ParallelFor(ldata_p->visc_turb_fc[idim], ldata_p->visc_turb_fc[idim].nGrowVect(), [=]
                             AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
@@ -106,7 +105,7 @@ void PeleLM::calcTurbViscosity(const TimeStamp &a_time) {
                                                 Array4<Real const>(dens_arr[box_no]),
                                                 Array4<Real      >(mut_arr[box_no]) );
                             });
-       } else if (m_les_model == "Sigma") {
+       } else if (m_les_model == LESModel::Sigma) {
          const amrex::Real prefact = m_les_cs_sigma * m_les_cs_sigma * l_scale * l_scale;
          amrex::ParallelFor(ldata_p->visc_turb_fc[idim], ldata_p->visc_turb_fc[idim].nGrowVect(), [=]
                             AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept

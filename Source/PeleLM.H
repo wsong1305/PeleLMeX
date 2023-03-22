@@ -654,6 +654,50 @@ class PeleLM : public amrex::AmrCore {
 
    //-----------------------------------------------------------------------------
    // UTILS
+   template<class K>
+   void parseUserKey(amrex::ParmParse &a_pp,
+                     const std::string &a_search_key,
+                     const K &keyT,
+                     int &key,
+                     int keyIndex = -1)
+   {
+       std::string userkey = "default";
+       if (keyIndex < 0 ) {
+           a_pp.query(a_search_key.c_str(), userkey);
+       } else {
+           int search_key_size = a_pp.countval(a_search_key.c_str());
+           if (search_key_size > 0) {
+              AMREX_ASSERT(keyIndex < search_key_size);
+              amrex::Vector<std::string> userkeyVec(search_key_size);
+              a_pp.getarr(a_search_key.c_str(),userkeyVec,keyIndex,1);
+              userkey = userkeyVec[keyIndex];
+           }
+       }
+       std::transform(userkey.begin(), userkey.end(), userkey.begin(), ::tolower);
+       if (std::find(std::begin(keyT.searchKey),
+                     std::end(keyT.searchKey), a_search_key)
+                     == std::end(keyT.searchKey)) {
+          std::string errmsg = "Improper use of parseUserKey: search_key incompatible with provided userKey. \n";
+          errmsg += "The valid search keys are:\n";
+          for ( const auto &validKey : keyT.searchKey ) {
+               errmsg += " - " + validKey + " \n";
+          }
+          amrex::Abort(errmsg);
+       }
+
+       if (keyT.str2int.count(userkey) == 0) {
+          std::string errmsg = "Invalid key for search_key " + a_search_key + ". \n";
+          errmsg += "Valid keys are:\n";
+          for ( const auto &valid_pair : keyT.str2int ) {
+              if (valid_pair.first != "default"){
+                  errmsg += " - " + valid_pair.first + " \n";
+              }
+          }
+          amrex::Abort(errmsg);
+       }
+
+       key = keyT.str2int.at(userkey);
+   };
 
    // flux divergence
    void fluxDivergence(const amrex::Vector<amrex::MultiFab*> &a_divergence,
@@ -1183,7 +1227,7 @@ class PeleLM : public amrex::AmrCore {
    bool m_do_les {false};
    bool m_plot_les {false};
    int m_les_verbose {0};
-   std::string m_les_model {"None"};
+   int m_les_model {LESModel::None};
    amrex::Real m_les_cs_smag {0.18};
    amrex::Real m_les_cm_wale {0.60};
    amrex::Real m_les_cs_sigma {1.35};
@@ -1228,9 +1272,8 @@ class PeleLM : public amrex::AmrCore {
    amrex::Real m_uncoveredVol {-1.0};
    int m_closed_chamber {0};
 
-   // Godunov is default
-   std::string m_predict_advection_key {"Godunov_PLM"};
-   std::string m_advection_key {"Godunov_PLM"};
+   // Godunov PLM is default
+   int m_advection_key {AdvectionScheme::Godunov_PLM};
    std::string m_predict_advection_type {""};
    std::string m_advection_type {""};
    int m_Godunov_ppm {1};

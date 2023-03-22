@@ -162,63 +162,18 @@ void PeleLM::readParameters() {
    // Boundary conditions
    // -----------------------------------------
    int isOpenDomain = 0;
-
-   Vector<std::string> lo_bc_char(AMREX_SPACEDIM);
-   Vector<std::string> hi_bc_char(AMREX_SPACEDIM);
-   pp.getarr("lo_bc",lo_bc_char,0,AMREX_SPACEDIM);
-   pp.getarr("hi_bc",hi_bc_char,0,AMREX_SPACEDIM);
-
    Vector<int> lo_bc(AMREX_SPACEDIM), hi_bc(AMREX_SPACEDIM);
-   for (int dir = 0; dir<AMREX_SPACEDIM; dir++){
-      if (lo_bc_char[dir] == "Interior") {
-         lo_bc[dir] = 0;
-      } else if (lo_bc_char[dir] == "Inflow") {
-         lo_bc[dir] = 1;
-      } else if (lo_bc_char[dir] == "Outflow") {
-         lo_bc[dir] = 2;
-         isOpenDomain = 1;
-      } else if (lo_bc_char[dir] == "Symmetry") {
-         lo_bc[dir] = 3;
-      } else if (lo_bc_char[dir] == "SlipWallAdiab") {
-         lo_bc[dir] = 4;
-      } else if (lo_bc_char[dir] == "NoSlipWallAdiab") {
-         lo_bc[dir] = 5;
-      } else if (lo_bc_char[dir] == "SlipWallIsotherm") {
-         lo_bc[dir] = 6;
-      } else if (lo_bc_char[dir] == "NoSlipWallIsotherm") {
-         lo_bc[dir] = 7;
-      } else {
-         amrex::Abort("Wrong boundary condition word in lo_bc, please use: Interior, Inflow, Outflow, "
-                      "Symmetry, SlipWallAdiab, NoSlipWallAdiab, SlipWallIsotherm, NoSlipWallIsotherm");
-      }
-
-      if (hi_bc_char[dir] == "Interior") {
-         hi_bc[dir] = 0;
-      } else if (hi_bc_char[dir] == "Inflow") {
-         hi_bc[dir] = 1;
-      } else if (hi_bc_char[dir] == "Outflow") {
-         hi_bc[dir] = 2;
-         isOpenDomain = 1;
-      } else if (hi_bc_char[dir] == "Symmetry") {
-         hi_bc[dir] = 3;
-      } else if (hi_bc_char[dir] == "SlipWallAdiab") {
-         hi_bc[dir] = 4;
-      } else if (hi_bc_char[dir] == "NoSlipWallAdiab") {
-         hi_bc[dir] = 5;
-      } else if (hi_bc_char[dir] == "SlipWallIsotherm") {
-         hi_bc[dir] = 6;
-      } else if (hi_bc_char[dir] == "NoSlipWallIsotherm") {
-         hi_bc[dir] = 7;
-      } else {
-         amrex::Abort("Wrong boundary condition word in hi_bc, please use: Interior, Inflow, Outflow, "
-                      "Symmetry, SlipWallAdiab, NoSlipWallAdiab, SlipWallIsotherm, NoSlipWallIsotherm");
-      }
-   }
-
-   // Store BCs in m_phys_bc.
    for (int idim = 0; idim < AMREX_SPACEDIM; idim++) {
-      m_phys_bc.setLo(idim,lo_bc[idim]);
-      m_phys_bc.setHi(idim,hi_bc[idim]);
+      int lo_bc = BoundaryCondition::BCInterior;
+      int hi_bc = BoundaryCondition::BCInterior;
+      parseUserKey(pp,"lo_bc",boundarycondition,lo_bc,idim);
+      parseUserKey(pp,"hi_bc",boundarycondition,hi_bc,idim);
+      m_phys_bc.setLo(idim,lo_bc);
+      m_phys_bc.setHi(idim,hi_bc);
+      if (lo_bc == BoundaryCondition::BCOutflow ||
+          hi_bc == BoundaryCondition::BCOutflow ) {
+         isOpenDomain = 1;
+      }
    }
 
    // Activate closed chamber if !isOpenDomain
@@ -293,11 +248,7 @@ void PeleLM::readParameters() {
    // -----------------------------------------
    // Physic solver: incompressible or low Mach
    pp.query("use_divu", m_has_divu);
-   std::string solver_str{""};
-   pp.query("physic_solver", solver_str);
-   if ( solver_str == "incompressible" ) {
-      m_solver = NSSolver::Incompressible;
-   }
+   parseUserKey(pp, "ns_solver", nssolver, m_solver);
    if (m_solver==NSSolver::Incompressible) {
       m_has_divu = 0;
       m_do_react = 0;
@@ -320,19 +271,17 @@ void PeleLM::readParameters() {
    // -----------------------------------------
    // LES
    // -----------------------------------------
-   pp.query("les_model", m_les_model);
-   if (m_les_model == "None") {
+   parseUserKey(pp, "les_model", lesmodel, m_les_model);
+   if (m_les_model == LESModel::None) {
      m_do_les = false;
    } else {
-     if (m_les_model == "Smagorinsky") {
+     if (m_les_model == LESModel::Smagorinsky) {
        pp.query("les_cs_smag", m_les_cs_smag);
-     } else if (m_les_model == "WALE") {
+     } else if (m_les_model == LESModel::WALE) {
        pp.query("les_cm_wale", m_les_cm_wale);
-     } else if (m_les_model == "Sigma") {
+     } else if (m_les_model == LESModel::Sigma) {
        pp.query("les_cs_sigma", m_les_cs_sigma);
        AMREX_ALWAYS_ASSERT(AMREX_SPACEDIM == 3); // Sigma only available in 3D
-     } else {
-       amrex::Abort("LES model must be None, Smagorinsky, WALE or Sigma. Invalid choie: " + m_les_model);
      }
      m_do_les = true;
      m_les_verbose = m_verbose;
@@ -419,11 +368,11 @@ void PeleLM::readParameters() {
    // Load Balancing
    // -----------------------------------------
    pp.query("do_load_balancing",m_doLoadBalance);
-   pp.query("load_balancing_method",m_loadBalanceMethod);
-   pp.query("load_balancing_cost_estimate",m_loadBalanceCost);
+   parseUserKey(pp, "load_balancing_method", lbmethod, m_loadBalanceMethod);
+   parseUserKey(pp, "load_balancing_cost_estimate", lbcost, m_loadBalanceCost);
    pp.query("load_balancing_efficiency_threshold",m_loadBalanceEffRatioThreshold);
-   pp.query("chem_load_balancing_method",m_loadBalanceMethodChem);
-   pp.query("chem_load_balancing_cost_estimate",m_loadBalanceCostChem);
+   parseUserKey(pp, "chem_load_balancing_method", lbmethod, m_loadBalanceMethodChem);
+   parseUserKey(pp, "chem_load_balancing_cost_estimate", lbcost, m_loadBalanceCostChem);
 
    // Deactivate load balancing for serial runs
 #ifdef AMREX_USE_MPI
@@ -437,35 +386,33 @@ void PeleLM::readParameters() {
    // -----------------------------------------
    // Advection
    // -----------------------------------------
-   pp.query("advection_scheme",m_advection_key);
-   if ( m_advection_key == "Godunov_PLM" ) {
+   parseUserKey(pp, "advection_scheme", advscheme, m_advection_key);
+   if ( m_advection_key == AdvectionScheme::Godunov_PLM ) {
        m_advection_type = "Godunov";
        m_Godunov_ppm = 0;
        ParmParse ppg("godunov");
        ppg.query("use_forceInTrans", m_Godunov_ForceInTrans);
-   } else if ( m_advection_key == "Godunov_PPM" ) {
+   } else if ( m_advection_key == AdvectionScheme::Godunov_PPM ) {
        m_advection_type = "Godunov";
        m_Godunov_ppm = 1;
        m_Godunov_ppm_limiter = PPM::VanLeer;
        ParmParse ppg("godunov");
        ppg.query("use_forceInTrans", m_Godunov_ForceInTrans);
-   } else if ( m_advection_key == "Godunov_PPM_WENOZ" ) {
+   } else if ( m_advection_key == AdvectionScheme::Godunov_PPM_WENOZ ) {
        m_advection_type = "Godunov";
        m_Godunov_ppm = 1;
        m_Godunov_ppm_limiter = PPM::WENOZ;
        ParmParse ppg("godunov");
        ppg.query("use_forceInTrans", m_Godunov_ForceInTrans);
-   } else if ( m_advection_key == "Godunov_PPM_NOLIM" ) {
+   } else if ( m_advection_key == AdvectionScheme::Godunov_PPM_NOLIM ) {
        m_advection_type = "Godunov";
        m_Godunov_ppm = 1;
        m_Godunov_ppm_limiter = PPM::NoLimiter;
        ParmParse ppg("godunov");
        ppg.query("use_forceInTrans", m_Godunov_ForceInTrans);
-   } else if ( m_advection_key == "Godunov_BDS" ) {
+   } else if ( m_advection_key == AdvectionScheme::Godunov_BDS ) {
        m_advection_type = "BDS";
        m_Godunov_ppm = 0;
-   } else {
-       Abort("Unknown 'advection_scheme'. Recognized options are: Godunov_PLM, Godunov_PPM or Godunov_BDS");
    }
    m_predict_advection_type = "Godunov";  // Only option at this point. This will disapear when predict_velocity support BDS.
 
