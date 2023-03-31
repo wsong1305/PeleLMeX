@@ -77,7 +77,7 @@ pelelm_initdata (int i, int j, int k,
 
     // Hot gaussian properties
     amrex::Real y_lo = 0.01;
-    amrex::Real Gauss_maxT = 1400.0;
+    amrex::Real Gauss_maxT = 1450.0;
     amrex::Real Gauss_T_width = 0.002;
     amrex::Real Gauss_Spec_width = 0.0020;
     amrex::Real innerwall = 0.025;

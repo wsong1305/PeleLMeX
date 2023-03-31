@@ -22,11 +22,8 @@ USE_HIP         = FALSE
 USE_EFIELD		 = FALSE
 
 # PelePhysics
-Chemistry_Model = drm19
-Reactions_Model	 = Fuego
-Eos_Model			 = Fuego
-Transport_Model   = Simple
-
-USE_SUNDIALS_PP = TRUE
+Chemistry_Model  = drm19
+Eos_Model        = Fuego
+Transport_Model  = Simple
 
 include $(PELELMEX_HOME)/Utils/Make.PeleLMeX
