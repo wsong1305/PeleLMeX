@@ -121,7 +121,24 @@ PeleLM::getSpeciesVect(const TimeStamp &a_time) {
    }
    return r;
 }
-
+#ifdef PELELM_USE_MF
+Vector<std::unique_ptr<MultiFab> >
+PeleLM::getMFVect(const TimeStamp &a_time) {
+   AMREX_ASSERT(!m_incompressible);
+   Vector<std::unique_ptr<MultiFab> > r;
+   r.reserve(finest_level+1);
+   if ( a_time == AmrOldTime ) {
+      for (int lev = 0; lev <= finest_level; ++lev) {
+         r.push_back(std::make_unique<MultiFab> (m_leveldata_old[lev]->state,amrex::make_alias,FIRSTMFVAR,1));
+      }
+   } else {
+      for (int lev = 0; lev <= finest_level; ++lev) {
+         r.push_back(std::make_unique<MultiFab> (m_leveldata_new[lev]->state,amrex::make_alias,FIRSTMFVAR,1));
+      }
+   }
+   return r;
+}
+#endif
 Vector<std::unique_ptr<MultiFab> >
 PeleLM::getDensityVect(const TimeStamp &a_time) {
    AMREX_ASSERT(!m_incompressible);
@@ -264,6 +281,9 @@ PeleLM::averageDownScalars(const PeleLM::TimeStamp &a_time)
    int nScal = NUM_SPECIES+3;       // rho, rhoYs, rhoH, Temp
 #ifdef PELE_USE_EFIELD
    nScal += 2;                      // rhoRT, nE
+#endif
+#ifdef PELELM_USE_MF
+   nScal += 1;
 #endif
    for (int lev = finest_level; lev > 0; --lev) {
       auto ldataFine_p = getLevelDataPtr(lev,a_time);

@@ -43,10 +43,18 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
    AMREX_ASSERT((a_time == AmrOldTime) || (a_time == AmrNewTime) );
    if (a_time == AmrOldTime) {
       AMREX_ASSERT(diffData->Dn.size() == finest_level+1);
+#ifdef PELELM_USE_MF
+      AMREX_ASSERT(diffData->Dn[0].nComp() >= NUM_SPECIES+3);
+#else
       AMREX_ASSERT(diffData->Dn[0].nComp() >= NUM_SPECIES+2);
+#endif      
    } else {
       AMREX_ASSERT(diffData->Dnp1.size() == finest_level+1);
+#ifdef PELELM_USE_MF
+      AMREX_ASSERT(diffData->Dnp1[0].nComp() >= NUM_SPECIES+3);
+#else
       AMREX_ASSERT(diffData->Dnp1[0].nComp() >= NUM_SPECIES+2);
+#endif
    }
 
    //----------------------------------------------------------------
@@ -60,8 +68,13 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
       const auto& ba = grids[lev];
       const auto& factory = Factory(lev);
       for (int idim = 0; idim <AMREX_SPACEDIM; idim++) {
-         fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
+#ifdef PELELM_USE_MF
+	fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
+                                  dmap[lev], NUM_SPECIES+3, nGrow, MFInfo(), factory);
+#else
+	fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
                                   dmap[lev], NUM_SPECIES+2, nGrow, MFInfo(), factory);
+#endif	
       }
    }
 #ifdef AMREX_USE_EB
@@ -118,7 +131,7 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
 #ifdef AMREX_USE_EB
    auto bcRecSpec = fetchBCRecArray(FIRSTSPEC,NUM_SPECIES);
    auto bcRecSpec_d = convertToDeviceVector(bcRecSpec);
-   fluxDivergenceRD(GetVecOfConstPtrs(getSpeciesVect(a_time)), 0,
+   fluxDivergenceoRD(GetVecOfConstPtrs(getSpeciesVect(a_time)), 0,
                     diffTermVec, 0,
                     GetVecOfArrOfPtrs(fluxes), 0,
                     {}, 0,
@@ -146,8 +159,13 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
                     {}, 0,
                     1, intensiveFluxes, bcRecRhoH_d.dataPtr(), -1.0, m_dt);
 #else
+#ifdef PELELM_USE_MF
+   fluxDivergence(diffTermVec, 0, GetVecOfArrOfPtrs(fluxes), 0,
+                  NUM_SPECIES+3, intensiveFluxes, -1.0);
+#else
    fluxDivergence(diffTermVec, 0, GetVecOfArrOfPtrs(fluxes), 0,
                   NUM_SPECIES+2, intensiveFluxes, -1.0);
+#endif
 #endif
 
    // Get the wbar term if appropriate
@@ -330,6 +348,17 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
                                           1, -1.0, do_avgDown);
    }
 
+#ifdef PELELM_USE_MF
+   auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,1);
+
+   //martin: test
+   getDiffusionOp()->computeDiffFluxes(a_fluxes, NUM_SPECIES+1,
+   				       GetVecOfConstPtrs(getMFVect(a_time)), 0,
+   				       GetVecOfConstPtrs(getDensityVect(a_time)),
+   				       GetVecOfConstPtrs(getDiffusivityVect(a_time)), NUM_SPECIES+2, bcRecMF, // martin: not sure here
+   				       1, -1.0, do_avgDown);
+#endif
+   
    // Differential diffusion term: \sum_k ( h_k * \Flux_k )
    computeSpeciesEnthalpyFlux(a_fluxes,
                               GetVecOfConstPtrs(getTempVect(a_time)));
@@ -337,7 +366,11 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
 
    //----------------------------------------------------------------
    // Get fluxes consistent accross levels by averaging down all components
+#ifdef PELELM_USE_MF
+   getDiffusionOp()->avgDownFluxes(a_fluxes,0,NUM_SPECIES+3);
+#else
    getDiffusionOp()->avgDownFluxes(a_fluxes,0,NUM_SPECIES+2);
+#endif
    //----------------------------------------------------------------
 
 #ifdef AMREX_USE_EB
@@ -817,6 +850,7 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
    // [0:NUM_SPECIES-1] Species     : \Flux_k
    // [NUM_SPECIES]     Temperature : - \lambda \nabla T
    // [NUM_SPECIES+1]   DiffDiff    : \sum_k ( h_k * \Flux_k )
+   // [NUM_SPECIES+2]   MF          :: Flux MF
    int nGrow = 0;                   // No need for ghost face on fluxes
    Vector<Array<MultiFab,AMREX_SPACEDIM> > fluxes(finest_level+1);
    for (int lev = 0; lev <= finest_level; ++lev) {
@@ -824,7 +858,11 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
       const auto& factory = Factory(lev);
       for (int idim = 0; idim <AMREX_SPACEDIM; idim++) {
          fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
+#ifdef PELELM_USE_MF
+                                  dmap[lev], NUM_SPECIES+3, nGrow, MFInfo(), factory);
+#else
                                   dmap[lev], NUM_SPECIES+2, nGrow, MFInfo(), factory);
+#endif
       }
    }
 #ifdef AMREX_USE_EB
@@ -851,13 +889,22 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
          const Box& bx = mfi.tilebox();
          auto const& rhoY_o  = ldata_p->state.const_array(mfi,FIRSTSPEC);
          auto const& fY      = advData->Forcing[lev].array(mfi,0);
-         amrex::ParallelFor(bx, [rhoY_o, fY, dt=m_dt]
-         AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+#ifdef PELELM_USE_MF
+         auto const& fMF      = advData->Forcing[lev].array(mfi,NUM_SPECIES+1);
+         amrex::ParallelFor(bx, [rhoY_o, fY, fMF, dt=m_dt]
+#else
+         amrex::ParallelFor(bx, [rhoY_o, fY, dt=m_dt] 			    
+#endif			    
+	 AMREX_GPU_DEVICE (int i, int j, int k) noexcept
          {
             for (int n = 0; n < NUM_SPECIES; n++) {
                fY(i,j,k,n) *= dt;
                fY(i,j,k,n) += rhoY_o(i,j,k,n);
             }
+#ifdef PELELM_USE_MF
+	    fMF(i,j,k) *= dt;
+	    fMF(i,j,k) += rhoY_o(i,j,k,NUM_SPECIES+3);
+#endif
          });
       }
    }
@@ -902,6 +949,17 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
                                                  NUM_SPECIES, 0, m_dt);
 #endif
 
+#ifdef PELELM_USE_MF
+      auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,1);
+      getDiffusionOp()->diffuse_scalar(GetVecOfPtrs(getMFVect(AmrNewTime)), 0,
+                                       GetVecOfConstPtrs(advData->Forcing), NUM_SPECIES+1,
+                                       GetVecOfArrOfPtrs(fluxes), NUM_SPECIES+2,
+                                       GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this is the acoeff of LinOp
+                                       GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this triggers proper scaling by density
+                                       GetVecOfConstPtrs(getDiffusivityVect(AmrNewTime)), NUM_SPECIES+2, bcRecMF,
+                                       1, 0, m_dt);
+#endif
+   
    // Add lagged Wbar term
    // Computed in computeDifferentialDiffusionTerms at t^{n} if first SDC iteration, t^{np1,k} otherwise
    if (m_use_wbar) {
@@ -956,16 +1014,28 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
    // FillPatch the new species before computing flux correction terms
    fillPatchSpecies(AmrNewTime);
 
+#ifdef PELELM_USE_MF
+   fillPatchMF(AmrNewTime);
+#endif
+   
    // Adjust species diffusion fluxes to ensure their sum is zero
    adjustSpeciesFluxes(GetVecOfArrOfPtrs(fluxes),
                        GetVecOfConstPtrs(getSpeciesVect(AmrNewTime)));
-
+   
    // Average down fluxes^{np1,kp1}
    getDiffusionOp()->avgDownFluxes(GetVecOfArrOfPtrs(fluxes),0,NUM_SPECIES);
 
+#ifdef PELELM_USE_MF
+   getDiffusionOp()->avgDownFluxes(GetVecOfArrOfPtrs(fluxes),NUM_SPECIES+2,1);
+#endif   
+   
    // Compute diffusion term D^{np1,kp1} (or Dhat)
    fluxDivergence(GetVecOfPtrs(diffData->Dhat), 0, GetVecOfArrOfPtrs(fluxes), 0, NUM_SPECIES, 1, -1.0);
 
+#ifdef PELELM_USE_MF
+   fluxDivergence(GetVecOfPtrs(diffData->Dhat), NUM_SPECIES+2, GetVecOfArrOfPtrs(fluxes), NUM_SPECIES+2, 1, 1, -1.0);
+#endif
+   
    // Update species
    // Remove the Wbar term because we included it in both the dhat and the forcing.
    for (int lev = 0; lev <= finest_level; ++lev) {
@@ -999,6 +1069,26 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
             }
          });
       }
+
+#ifdef PELELM_USE_MF      
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+      for (MFIter mfi(ldata_p->state,TilingIfNotGPU()); mfi.isValid(); ++mfi)
+      {
+         const Box& bx     = mfi.tilebox();
+         auto const& rhoY  = ldata_p->state.array(mfi,FIRSTMFVAR);
+         auto const& dhat  = diffData->Dhat[lev].const_array(mfi,NUM_SPECIES+2);
+         auto const& force = advData->Forcing[lev].const_array(mfi,NUM_SPECIES+1);
+
+         amrex::ParallelFor(bx, [rhoY,dhat,force,dt=m_dt]
+         AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+         {
+	   // martin: need to add this
+	   //rhoY(i,j,k) = force(i,j,k) + dt * dhat(i,j,k);
+         });
+      }
+#endif      
    }
 
    // FillPatch species again before going into the enthalpy solve
@@ -1347,16 +1437,27 @@ void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
          auto const& extRhoH = m_extSource[lev]->const_array(mfi,RHOH);
          auto const& fY      = advData->Forcing[lev].array(mfi,0);
          auto const& fT      = advData->Forcing[lev].array(mfi,NUM_SPECIES);
+#ifdef PELELM_USE_MF
+	 auto const& fMF     = advData->Forcing[lev].array(mfi,NUM_SPECIES+1);
+#endif
          auto const& dwbar   = (m_use_wbar) ? diffData->Dwbar[lev].const_array(mfi,0)
                                             : diffData->Dn[lev].const_array(mfi,0);          // Dummy unsed Array4
          auto const& dT     = (m_use_soret) ? diffData->DT[lev].const_array(mfi,0)
                                             : diffData->Dn[lev].const_array(mfi,0);
-
+#ifdef PELELM_USE_MF
          amrex::ParallelFor(bx, [dn, ddn, dnp1k, ddnp1k, dwbar, dT, use_wbar=m_use_wbar, use_soret=m_use_soret,do_react=m_do_react,
-                                 r, a, extRhoY, extRhoH, fY, fT, dp0dt=m_dp0dt, is_closed_ch=m_closed_chamber]
+                                 r, a, extRhoY, extRhoH, fY, fT, fMF, dp0dt=m_dp0dt, is_closed_ch=m_closed_chamber]
+#else
+         amrex::ParallelFor(bx, [dn, ddn, dnp1k, ddnp1k, dwbar, dT, use_wbar=m_use_wbar, use_soret=m_use_soret,do_react=m_do_react,
+                                 r, a, extRhoY, extRhoH, fY, fT, dp0dt=m_dp0dt, is_closed_ch=m_closed_chamber]	 
+#endif
          AMREX_GPU_DEVICE (int i, int j, int k) noexcept
          {
-            buildDiffusionForcing( i, j, k, dn, ddn, dnp1k, ddnp1k, r, a, dp0dt, is_closed_ch, do_react, fY, fT );
+#ifdef PELELM_USE_MF	   
+	   buildDiffusionForcing( i, j, k, dn, ddn, dnp1k, ddnp1k, r, a, dp0dt, is_closed_ch, do_react, fY, fT, fMF );
+#else
+	   buildDiffusionForcing( i, j, k, dn, ddn, dnp1k, ddnp1k, r, a, dp0dt, is_closed_ch, do_react, fY, fT );
+#endif
             if (use_wbar) {
                for (int n = 0; n < NUM_SPECIES; n++) {
                   fY(i,j,k,n) += dwbar(i,j,k,n);
@@ -1371,6 +1472,9 @@ void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
                fY(i,j,k,n) += extRhoY(i,j,k,n);
             }
             fT(i,j,k) += extRhoH(i,j,k);
+#ifdef PELELM_USE_MF
+	    // need to add source to fMF ? should not need it
+#endif	    
          });
       }
    }
