@@ -389,7 +389,7 @@ void PeleLM::oneSDC(int sdcIter,
    //martin: only test
    //updateScalarComp(advData, FIRSTMFVAR, 1);
 #ifdef PELELM_USE_MF
-   //updateMF(advData,diffData);
+   updateMF(advData,diffData);
    //checkMFstuff(advData,diffData);
    //computePassiveAdvTerms(advData, FIRSTMFVAR, 1);
 #endif
@@ -429,13 +429,20 @@ void PeleLM::updateMF(std::unique_ptr<AdvanceAdvData> &advData,
       auto const& old_arr  = ldataOld_p->state.const_array(mfi,FIRSTMFVAR);
       auto const& new_arr  = ldataNew_p->state.array(mfi,FIRSTMFVAR);
       auto const& a_of_s    = advData->AofS[lev].const_array(mfi,FIRSTMFVAR);
-      amrex::ParallelFor(bx, 1, [old_arr, new_arr, a_of_s, dt=m_dt]
+      auto const& dnmf    = diffData->Dn[lev].const_array(mfi,NUM_SPECIES+2);
+      auto const& dnp1kmf = diffData->Dnp1[lev].const_array(mfi,NUM_SPECIES+2);
+      auto const& dhatmf = diffData->Dhat[lev].const_array(mfi,NUM_SPECIES+2);
+      auto const& fMF      = advData->Forcing[lev].array(mfi,NUM_SPECIES+1);
+      amrex::ParallelFor(bx, 1, [old_arr, new_arr, a_of_s, dnmf, dnp1kmf, fMF, dhatmf, dt=m_dt]
       AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
       {
 	//Print() << new_arr(i,j,k,0) << std::endl;
 	//Print() << a_of_s(i,j,k,0) << std::endl;
 	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * (a_of_s(i,j,k,n));
-	new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * a_of_s(i,j,k);
+	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * a_of_s(i,j,k);
+	//new_arr(i,j,k) = fMF(i,j,k) + dt * dnp1kmf(i,j,k);
+	//new_arr(i,j,k) = old_arr(i,j,k) + fMF(i,j,k) * dt + dt * dhatmf(i,j,k); // martin: this is not right, where is D added normally?
+	new_arr(i,j,k) = old_arr(i,j,k) + fMF(i,j,k) * dt;
       });
     }
   }

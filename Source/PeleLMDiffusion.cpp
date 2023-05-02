@@ -1081,11 +1081,10 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
          auto const& dhat  = diffData->Dhat[lev].const_array(mfi,NUM_SPECIES+2);
          auto const& force = advData->Forcing[lev].const_array(mfi,NUM_SPECIES+1);
 
-         amrex::ParallelFor(bx, [rhoY,dhat,force,dt=m_dt]
+         amrex::ParallelFor(bx, [rhoY,force,dhat,dt=m_dt]
          AMREX_GPU_DEVICE (int i, int j, int k) noexcept
          {
-	   // martin: need to add this
-	   rhoY(i,j,k) = force(i,j,k);
+	   rhoY(i,j,k) = force(i,j,k) + dt * dhat(i,j,k);
          });
       }
 #endif      
