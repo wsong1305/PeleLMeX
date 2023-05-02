@@ -283,7 +283,7 @@ PeleLM::averageDownScalars(const PeleLM::TimeStamp &a_time)
    nScal += 2;                      // rhoRT, nE
 #endif
 #ifdef PELELM_USE_MF
-   nScal += 1;
+   nScal += 2;
 #endif
    for (int lev = finest_level; lev > 0; --lev) {
       auto ldataFine_p = getLevelDataPtr(lev,a_time);

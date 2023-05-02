@@ -390,7 +390,7 @@ void PeleLM::oneSDC(int sdcIter,
    //updateScalarComp(advData, FIRSTMFVAR, 1);
 #ifdef PELELM_USE_MF
    //updateMF(advData,diffData);
-   checkMFstuff(advData,diffData);
+   //checkMFstuff(advData,diffData);
    //computePassiveAdvTerms(advData, FIRSTMFVAR, 1);
 #endif
    
@@ -435,7 +435,7 @@ void PeleLM::updateMF(std::unique_ptr<AdvanceAdvData> &advData,
 	//Print() << new_arr(i,j,k,0) << std::endl;
 	//Print() << a_of_s(i,j,k,0) << std::endl;
 	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * (a_of_s(i,j,k,n));
-	new_arr(i,j,k,n) = old_arr(i,j,k,n) + .001;
+	new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * a_of_s(i,j,k);
       });
     }
   }

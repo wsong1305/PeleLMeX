@@ -116,7 +116,7 @@ getTransportCoeff(int i, int j, int k,
    amrex::Real cpmix = 0.0_rt;
    eos.TY2Cp(T(i,j,k), y, cpmix);
    cpmix *= 1.0e-4_rt;
-   rhoDi(i,j,k,NUM_SPECIES+2) = lambda(i,j,k) / cpmix / rho;
+   rhoDi(i,j,k,NUM_SPECIES+2) = lambda(i,j,k) / cpmix;
 #endif
 }
 
@@ -743,7 +743,7 @@ buildAdvectionForcing(int i, int j, int k,
                       amrex::Array4<const amrex::Real> const& rho,
                       amrex::Array4<const amrex::Real> const& rhoY,
                       amrex::Array4<const amrex::Real> const& T,
-#ifdef PELELM_USE_MF		      
+#ifdef PELELM_USE_MF
                       amrex::Array4<const amrex::Real> const& rhoMF,
 #endif
                       amrex::Array4<const amrex::Real> const& dn,
@@ -755,9 +755,9 @@ buildAdvectionForcing(int i, int j, int k,
                       int                              const& closed_chamber,
                       int                                     do_react,
                       amrex::Array4<      amrex::Real> const& forceY,
-		      amrex::Array4<      amrex::Real> const& forceT,
+		      amrex::Array4<      amrex::Real> const& forceT
 #ifdef PELELM_USE_MF
-                      amrex::Array4<      amrex::Real> const& forceMF
+                      ,amrex::Array4<      amrex::Real> const& forceMF
 #endif
 		      ) noexcept
 {
@@ -790,7 +790,9 @@ buildAdvectionForcing(int i, int j, int k,
    forceT(i,j,k) *= rhoinv * cpmixinv;
 
 #ifdef PELELM_USE_MF
+   //martin: test
    forceMF(i,j,k) = dn(i,j,k,NUM_SPECIES+2);
+   //forceMF(i,j,k) = 0.;
    //if (i == 15 && j == 15 && k == 15) {amrex::Print() << "dn " << dn(i,j,k,NUM_SPECIES+2) << " " << ddn(i,j,k) << std::endl;}
 #endif
 }
@@ -803,15 +805,19 @@ buildDiffusionForcing(int i, int j, int k,
                       amrex::Array4<const amrex::Real> const& ddn,
                       amrex::Array4<const amrex::Real> const& dnp1k,
                       amrex::Array4<const amrex::Real> const& ddnp1k,
+#ifdef PELELM_USE_MF
+                      amrex::Array4<const amrex::Real> const& dnmf,
+                      amrex::Array4<const amrex::Real> const& dnp1kmf,		      
+#endif
                       amrex::Array4<const amrex::Real> const& r,
                       amrex::Array4<const amrex::Real> const& a,
                       amrex::Real                      const& dp0dt,
                       int                              const& closed_chamber,
                       int                                     do_react,
                       amrex::Array4<      amrex::Real> const& forceY,
-                      amrex::Array4<      amrex::Real> const& forceT,
+                      amrex::Array4<      amrex::Real> const& forceT
 #ifdef PELELM_USE_MF
-		      amrex::Array4<      amrex::Real> const& forceMF
+		      ,amrex::Array4<      amrex::Real> const& forceMF
 #else
 #endif		      
 		      ) noexcept
@@ -826,7 +832,11 @@ buildDiffusionForcing(int i, int j, int k,
                              - dnp1k(i,j,k,NUM_SPECIES) - ddnp1k(i,j,k) );
 
 #ifdef PELELM_USE_MF
-   forceMF(i,j,k) = a(i,j,k,NUM_SPECIES+1) + 0.5_rt * ( dn(i,j,k,NUM_SPECIES+2) - dnp1k(i,j,k,NUM_SPECIES+2) );
+   //martin: there is an issue with forcing here (currently only does something reasonable if forceMF = 0 and not rhoY(i,j,k) = force(i,j,k); in differentialDiffusionUpdate)
+   //martin: test
+   forceMF(i,j,k) = a(i,j,k,NUM_SPECIES+1) + 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
+   //forceMF(i,j,k) = 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
+   //forceMF(i,j,k) = 0.;//a(i,j,k,NUM_SPECIES+1);
 #endif   
    
    if ( closed_chamber == 1 ) forceT(i,j,k) += dp0dt;

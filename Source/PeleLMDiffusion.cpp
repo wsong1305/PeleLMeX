@@ -351,8 +351,8 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
 #ifdef PELELM_USE_MF
    auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,1);
 
-   //martin: test
-   getDiffusionOp()->computeDiffFluxes(a_fluxes, NUM_SPECIES+1,
+   //martin: not sure here
+   getDiffusionOp()->computeDiffFluxes(a_fluxes, NUM_SPECIES+2,
    				       GetVecOfConstPtrs(getMFVect(a_time)), 0,
    				       GetVecOfConstPtrs(getDensityVect(a_time)),
    				       GetVecOfConstPtrs(getDiffusivityVect(a_time)), NUM_SPECIES+2, bcRecMF, // martin: not sure here
@@ -1070,7 +1070,7 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
          });
       }
 
-#ifdef PELELM_USE_MF      
+#ifdef PELELM_USE_MF
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -1085,7 +1085,7 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
          AMREX_GPU_DEVICE (int i, int j, int k) noexcept
          {
 	   // martin: need to add this
-	   //rhoY(i,j,k) = force(i,j,k) + dt * dhat(i,j,k);
+	   rhoY(i,j,k) = force(i,j,k);
          });
       }
 #endif      
@@ -1431,6 +1431,10 @@ void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
          auto const& ddn     = diffData->Dn[lev].const_array(mfi,NUM_SPECIES+1);
          auto const& dnp1k   = diffData->Dnp1[lev].const_array(mfi,0);
          auto const& ddnp1k  = diffData->Dnp1[lev].const_array(mfi,NUM_SPECIES+1);
+#ifdef PELELM_USE_MF
+	 auto const& dnmf    = diffData->Dn[lev].const_array(mfi,NUM_SPECIES+2);
+	 auto const& dnp1kmf = diffData->Dnp1[lev].const_array(mfi,NUM_SPECIES+2);
+#endif	 
          auto const& r       = ldataR_p->I_R.const_array(mfi);
          auto const& a       = advData->AofS[lev].const_array(mfi,FIRSTSPEC);
          auto const& extRhoY = m_extSource[lev]->const_array(mfi,FIRSTSPEC);
@@ -1445,7 +1449,7 @@ void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
          auto const& dT     = (m_use_soret) ? diffData->DT[lev].const_array(mfi,0)
                                             : diffData->Dn[lev].const_array(mfi,0);
 #ifdef PELELM_USE_MF
-         amrex::ParallelFor(bx, [dn, ddn, dnp1k, ddnp1k, dwbar, dT, use_wbar=m_use_wbar, use_soret=m_use_soret,do_react=m_do_react,
+         amrex::ParallelFor(bx, [dn, ddn, dnp1k, ddnp1k, dnmf, dnp1kmf, dwbar, dT, use_wbar=m_use_wbar, use_soret=m_use_soret,do_react=m_do_react,
                                  r, a, extRhoY, extRhoH, fY, fT, fMF, dp0dt=m_dp0dt, is_closed_ch=m_closed_chamber]
 #else
          amrex::ParallelFor(bx, [dn, ddn, dnp1k, ddnp1k, dwbar, dT, use_wbar=m_use_wbar, use_soret=m_use_soret,do_react=m_do_react,
@@ -1453,8 +1457,8 @@ void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
 #endif
          AMREX_GPU_DEVICE (int i, int j, int k) noexcept
          {
-#ifdef PELELM_USE_MF	   
-	   buildDiffusionForcing( i, j, k, dn, ddn, dnp1k, ddnp1k, r, a, dp0dt, is_closed_ch, do_react, fY, fT, fMF );
+#ifdef PELELM_USE_MF
+	   buildDiffusionForcing( i, j, k, dn, ddn, dnp1k, ddnp1k, dnmf, dnp1kmf, r, a, dp0dt, is_closed_ch, do_react, fY, fT, fMF );
 #else
 	   buildDiffusionForcing( i, j, k, dn, ddn, dnp1k, ddnp1k, r, a, dp0dt, is_closed_ch, do_react, fY, fT );
 #endif
