@@ -801,14 +801,21 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
                         divu,
                         GetArrOfConstPtrs(fluxes[lev]), 0,
                         GetArrOfConstPtrs(fluxes[lev]), 0, // This will not be used since none of rhoY/rhoH in convective
-#ifdef PELELM_USE_MF
-                        NUM_SPECIES+2,
-#else
                         NUM_SPECIES+1,
-#endif
                         AdvTypeAll_d.dataPtr(),
                         geom[lev], -1.0,
                         fluxes_are_area_weighted);
+
+#ifdef PELELM_USE_MF
+      advFluxDivergence(lev, advData->AofS[lev], FIRSTMFVAR,
+                        divu,
+                        GetArrOfConstPtrs(fluxes[lev]), NUM_SPECIES+1,
+                        GetArrOfConstPtrs(fluxes[lev]), NUM_SPECIES+1, // This will not be used since none of rhoY/rhoH in convective
+                        1,
+                        AdvTypeMF_d.dataPtr(),
+                        geom[lev], -1.0,
+                        fluxes_are_area_weighted);
+#endif
 #endif
    }
 

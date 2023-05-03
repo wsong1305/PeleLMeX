@@ -834,7 +834,7 @@ buildDiffusionForcing(int i, int j, int k,
 #ifdef PELELM_USE_MF
    //martin: there is an issue with forcing here (currently only does something reasonable if forceMF = 0 and not rhoY(i,j,k) = force(i,j,k); in differentialDiffusionUpdate)
    //martin: test
-   forceMF(i,j,k) = a(i,j,k,NUM_SPECIES+1) + 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
+   forceMF(i,j,k) = a(i,j,k,NUM_SPECIES+3) + 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
    //forceMF(i,j,k) = 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
    //forceMF(i,j,k) = 0.;//a(i,j,k,NUM_SPECIES+1);
 #endif   

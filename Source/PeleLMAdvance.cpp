@@ -442,6 +442,7 @@ void PeleLM::updateMF(std::unique_ptr<AdvanceAdvData> &advData,
 	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * a_of_s(i,j,k);
 	//new_arr(i,j,k) = fMF(i,j,k) + dt * dnp1kmf(i,j,k);
 	//new_arr(i,j,k) = old_arr(i,j,k) + fMF(i,j,k) * dt + dt * dhatmf(i,j,k); // martin: this is not right, where is D added normally?
+	// update MF part is not really necessary
 	new_arr(i,j,k) = old_arr(i,j,k) + fMF(i,j,k) * dt;
       });
     }
