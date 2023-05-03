@@ -673,7 +673,7 @@ void PeleLM::variablesSetup() {
       setSootIndx();
 #endif
 #ifdef PELELM_USE_MF
-   std::string name = "mixFrac";
+   std::string name = "rhoMixFrac";
    Print() << "adding " << name << std::endl;
    stateComponents.emplace_back(FIRSTMFVAR,name);
 #endif

@@ -167,7 +167,7 @@ void PeleLM::WritePlotFile() {
       }
 #endif
 #ifdef PELELM_USE_MF
-      std::string name = "mixFrac";
+      std::string name = "rhoMixFrac";
       plt_VarsName.push_back(name);
 #endif
       if (m_has_divu) {
@@ -732,7 +732,7 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
       if (plt_vars[i] == "soot_N")          inSoot = i;
 #endif
 #ifdef PELELM_USE_MF
-      if (plt_vars[i] == "mixFrac")          inMF = i;
+      if (plt_vars[i] == "rhoMixFrac")          inMF = i;
 #endif
    }
    if ( idY < 0 ) {
