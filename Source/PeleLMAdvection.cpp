@@ -733,12 +733,9 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
 
    //----------------------------------------------------------------
    // Fluxes divergence to get the scalars advection term
-#ifdef PELELM_USE_MF
-   auto AdvTypeAll = fetchAdvTypeArray(FIRSTSPEC,NUM_SPECIES+2); // Species+RhoH
-#else
    auto AdvTypeAll = fetchAdvTypeArray(FIRSTSPEC,NUM_SPECIES+1); // Species+RhoH
-#endif
    auto AdvTypeAll_d = convertToDeviceVector(AdvTypeAll);
+
    for (int lev = 0; lev <= finest_level; ++lev) {
 
       int nGrow_divu = 1;  // TODO EB Why incflo use 4 ?
@@ -756,21 +753,13 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
       //----------------------------------------------------------------
       // Use a temporary MF to hold divergence before redistribution
       int nGrow_divTmp= 3;
-#ifdef PELELM_USE_MF
-      MultiFab divTmp(grids[lev],dmap[lev],NUM_SPECIES+2,nGrow_divTmp,MFInfo(),EBFactory(lev));
-#else
       MultiFab divTmp(grids[lev],dmap[lev],NUM_SPECIES+1,nGrow_divTmp,MFInfo(),EBFactory(lev));
-#endif
       divTmp.setVal(0.0);
       advFluxDivergence(lev, divTmp, 0,
                         divu,
                         GetArrOfConstPtrs(fluxes[lev]), 0,
                         GetArrOfConstPtrs(fluxes[lev]), 0, // This will not be used since none of rhoY/rhoH in convective
-#ifdef PELELM_USE_MF
-                        NUM_SPECIES+2,
-#else
                         NUM_SPECIES+1,
-#endif
                         AdvTypeAll_d.dataPtr(),
                         geom[lev], -1.0,
                         fluxes_are_area_weighted);
