@@ -366,7 +366,7 @@ struct PeleLMCCFillExtDirMF
       const amrex::IntVect& iv,
       amrex::Array4<amrex::Real> const& state,
       const int dcomp,
-      const int /*numcomp*/,
+      const int numcomp,
       amrex::GeometryData const& geom,
       const amrex::Real time,
       const amrex::BCRec* bcr,
@@ -383,30 +383,36 @@ struct PeleLMCCFillExtDirMF
                                                           prob_lo[1] + (iv[1] + 0.5) * dx[1],
                                                           prob_lo[2] + (iv[2] + 0.5) * dx[2])};
 
-      // Get the first species component BC
-      const int* bc = bcr->data();
+      for (int m = 0; m < std::min(numcomp,NUMMFVAR); m++) {
 
-      // bcnormal handles all the state components at once
-      amrex::Real s_ext[NVAR] = {0.0};
+	// ???
+	const int* bc = bcr[m].data();
+	
+	// bcnormal handles all the state components at once
+	amrex::Real s_ext[NVAR] = {0.0};
 
-      for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
-         // Low
-         if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
+	for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
 
-            // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
+	  // Low
+	  if ((bc[idir] == amrex::BCType::ext_dir) and (iv[idir] < domlo[idir])) {
 
-            state(iv,dcomp) = s_ext[FIRSTMFVAR];
+	    // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
+	    bcnormal(x, m_nAux, s_ext, idir, 1, time, geom, *lprobparm, lpmfdata);
 
-         // High
-         } else if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
+	    state(iv,dcomp+m) = s_ext[FIRSTMFVAR+m];
+	  }
+	    
+	  // High
+	  amrex::Real s_ext[NVAR] = {0.0};
+	  if ((bc[idir+AMREX_SPACEDIM] == amrex::BCType::ext_dir) and (iv[idir] > domhi[idir])) {
 
-            // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
-            bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
-
-            state(iv,dcomp) = s_ext[FIRSTMFVAR];
-
-         }
+	    // bcnormal() is defined in pelelm_prob.H in problem directory in /Exec
+	    bcnormal(x, m_nAux, s_ext, idir, -1, time, geom, *lprobparm, lpmfdata);
+	      
+	    state(iv,dcomp+m) = s_ext[FIRSTMFVAR+m];
+	    
+	  }
+	}
       }
    }
 };

@@ -70,6 +70,7 @@ pelelm_initdata (int i, int j, int k,
     }
 
     state(i,j,k,FIRSTMFVAR) = eta * state(i,j,k,DENSITY); 
+    state(i,j,k,FIRSTMFVAR+1) = 0.; 
       
 }
 
@@ -139,7 +140,8 @@ bcnormal(
       s_ext[FIRSTSPEC+n] = massfrac[n] * s_ext[DENSITY];
     }
     
-    s_ext[FIRSTMFVAR] = eta * s_ext[DENSITY];
+    s_ext[FIRSTMFVAR] = 0.;
+    s_ext[FIRSTMFVAR+1] = eta * s_ext[DENSITY];
   }
 }
 

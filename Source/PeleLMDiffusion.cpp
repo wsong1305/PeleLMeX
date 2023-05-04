@@ -44,14 +44,14 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
    if (a_time == AmrOldTime) {
       AMREX_ASSERT(diffData->Dn.size() == finest_level+1);
 #ifdef PELELM_USE_MF
-      AMREX_ASSERT(diffData->Dn[0].nComp() >= NUM_SPECIES+3);
+      AMREX_ASSERT(diffData->Dn[0].nComp() >= NUM_SPECIES+2+NUMMFVAR);
 #else
       AMREX_ASSERT(diffData->Dn[0].nComp() >= NUM_SPECIES+2);
 #endif      
    } else {
       AMREX_ASSERT(diffData->Dnp1.size() == finest_level+1);
 #ifdef PELELM_USE_MF
-      AMREX_ASSERT(diffData->Dnp1[0].nComp() >= NUM_SPECIES+3);
+      AMREX_ASSERT(diffData->Dnp1[0].nComp() >= NUM_SPECIES+2+NUMMFVAR);
 #else
       AMREX_ASSERT(diffData->Dnp1[0].nComp() >= NUM_SPECIES+2);
 #endif
@@ -70,7 +70,7 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
       for (int idim = 0; idim <AMREX_SPACEDIM; idim++) {
 #ifdef PELELM_USE_MF
 	fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
-                                  dmap[lev], NUM_SPECIES+3, nGrow, MFInfo(), factory);
+                                  dmap[lev], NUM_SPECIES+2+NUMMFVAR, nGrow, MFInfo(), factory);
 #else
 	fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
                                   dmap[lev], NUM_SPECIES+2, nGrow, MFInfo(), factory);
@@ -161,7 +161,7 @@ void PeleLM::computeDifferentialDiffusionTerms(const TimeStamp &a_time,
 #else
 #ifdef PELELM_USE_MF
    fluxDivergence(diffTermVec, 0, GetVecOfArrOfPtrs(fluxes), 0,
-                  NUM_SPECIES+3, intensiveFluxes, -1.0);
+                  NUM_SPECIES+2+NUMMFVAR, intensiveFluxes, -1.0);
 #else
    fluxDivergence(diffTermVec, 0, GetVecOfArrOfPtrs(fluxes), 0,
                   NUM_SPECIES+2, intensiveFluxes, -1.0);
@@ -349,14 +349,14 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
    }
 
 #ifdef PELELM_USE_MF
-   auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,1);
+   auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,NUMMFVAR);
 
    //martin: not sure here
    getDiffusionOp()->computeDiffFluxes(a_fluxes, NUM_SPECIES+2,
    				       GetVecOfConstPtrs(getMFVect(a_time)), 0,
    				       GetVecOfConstPtrs(getDensityVect(a_time)),
    				       GetVecOfConstPtrs(getDiffusivityVect(a_time)), NUM_SPECIES+2, bcRecMF, // martin: not sure here
-   				       1, -1.0, do_avgDown);
+   				       NUMMFVAR, -1.0, do_avgDown);
 #endif
    
    // Differential diffusion term: \sum_k ( h_k * \Flux_k )
@@ -367,7 +367,7 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
    //----------------------------------------------------------------
    // Get fluxes consistent accross levels by averaging down all components
 #ifdef PELELM_USE_MF
-   getDiffusionOp()->avgDownFluxes(a_fluxes,0,NUM_SPECIES+3);
+   getDiffusionOp()->avgDownFluxes(a_fluxes,0,NUM_SPECIES+2+NUMMFVAR);
 #else
    getDiffusionOp()->avgDownFluxes(a_fluxes,0,NUM_SPECIES+2);
 #endif
@@ -859,7 +859,7 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
       for (int idim = 0; idim <AMREX_SPACEDIM; idim++) {
          fluxes[lev][idim].define(amrex::convert(ba,IntVect::TheDimensionVector(idim)),
 #ifdef PELELM_USE_MF
-                                  dmap[lev], NUM_SPECIES+3, nGrow, MFInfo(), factory);
+                                  dmap[lev], NUM_SPECIES+2+NUMMFVAR, nGrow, MFInfo(), factory);
 #else
                                   dmap[lev], NUM_SPECIES+2, nGrow, MFInfo(), factory);
 #endif
@@ -902,8 +902,10 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
                fY(i,j,k,n) += rhoY_o(i,j,k,n);
             }
 #ifdef PELELM_USE_MF
-	    fMF(i,j,k) *= dt;
-	    fMF(i,j,k) += rhoY_o(i,j,k,NUM_SPECIES+3);
+	    for (int m = 0; m < NUMMFVAR; m++) {
+	      fMF(i,j,k,m) *= dt;
+	      fMF(i,j,k,m) += rhoY_o(i,j,k,NUM_SPECIES+3+m);
+	    }
 #endif
          });
       }
@@ -950,14 +952,14 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
 #endif
 
 #ifdef PELELM_USE_MF
-      auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,1);
+      auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,NUMMFVAR);
       getDiffusionOp()->diffuse_scalar(GetVecOfPtrs(getMFVect(AmrNewTime)), 0,
                                        GetVecOfConstPtrs(advData->Forcing), NUM_SPECIES+1,
                                        GetVecOfArrOfPtrs(fluxes), NUM_SPECIES+2,
                                        GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this is the acoeff of LinOp
                                        GetVecOfConstPtrs(getDensityVect(AmrNewTime)),        // this triggers proper scaling by density
                                        GetVecOfConstPtrs(getDiffusivityVect(AmrNewTime)), NUM_SPECIES+2, bcRecMF,
-                                       1, 0, m_dt);
+                                       NUMMFVAR, 0, m_dt);
 #endif
    
    // Add lagged Wbar term
@@ -1026,14 +1028,14 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
    getDiffusionOp()->avgDownFluxes(GetVecOfArrOfPtrs(fluxes),0,NUM_SPECIES);
 
 #ifdef PELELM_USE_MF
-   getDiffusionOp()->avgDownFluxes(GetVecOfArrOfPtrs(fluxes),NUM_SPECIES+2,1);
+   getDiffusionOp()->avgDownFluxes(GetVecOfArrOfPtrs(fluxes),NUM_SPECIES+2,NUMMFVAR);
 #endif   
    
    // Compute diffusion term D^{np1,kp1} (or Dhat)
    fluxDivergence(GetVecOfPtrs(diffData->Dhat), 0, GetVecOfArrOfPtrs(fluxes), 0, NUM_SPECIES, 1, -1.0);
 
 #ifdef PELELM_USE_MF
-   fluxDivergence(GetVecOfPtrs(diffData->Dhat), NUM_SPECIES+2, GetVecOfArrOfPtrs(fluxes), NUM_SPECIES+2, 1, 1, -1.0);
+   fluxDivergence(GetVecOfPtrs(diffData->Dhat), NUM_SPECIES+2, GetVecOfArrOfPtrs(fluxes), NUM_SPECIES+2, NUMMFVAR, 1, -1.0);
 #endif
    
    // Update species
@@ -1084,7 +1086,9 @@ void PeleLM::differentialDiffusionUpdate(std::unique_ptr<AdvanceAdvData> &advDat
          amrex::ParallelFor(bx, [rhoY,force,dhat,dt=m_dt]
          AMREX_GPU_DEVICE (int i, int j, int k) noexcept
          {
-	   rhoY(i,j,k) = force(i,j,k) + dt * dhat(i,j,k);
+	   for (int m = 0; m < NUMMFVAR; m++) {
+	     rhoY(i,j,k,m) = force(i,j,k,m) + dt * dhat(i,j,k,m);
+	   }
          });
       }
 #endif      

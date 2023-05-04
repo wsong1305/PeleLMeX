@@ -306,9 +306,9 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
    auto AdvTypeRhoH = fetchAdvTypeArray(RHOH,1);
    auto AdvTypeRhoH_d = convertToDeviceVector(AdvTypeRhoH);
 #ifdef PELELM_USE_MF
-   auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,1);
+   auto bcRecMF = fetchBCRecArray(FIRSTMFVAR,NUMMFVAR);
    auto bcRecMF_d = convertToDeviceVector(bcRecMF);
-   auto AdvTypeMF = fetchAdvTypeArray(FIRSTMFVAR,1);
+   auto AdvTypeMF = fetchAdvTypeArray(FIRSTMFVAR,NUMMFVAR);
    auto AdvTypeMF_d = convertToDeviceVector(AdvTypeMF);
 #endif
    //----------------------------------------------------------------
@@ -318,7 +318,7 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
       for (int idim = 0; idim <AMREX_SPACEDIM; idim++) {
          fluxes[lev][idim].define(amrex::convert(grids[lev],IntVect::TheDimensionVector(idim)),
 #ifdef PELELM_USE_MF
-                                  dmap[lev], NUM_SPECIES+2, 0, MFInfo(), Factory(lev));         //Species + RhoH + MF
+                                  dmap[lev], NUM_SPECIES+1+NUMMFVAR, 0, MFInfo(), Factory(lev));         //Species + RhoH + MF
 #else
                                   dmap[lev], NUM_SPECIES+1, 0, MFInfo(), Factory(lev));         //Species + RhoH
 #endif
@@ -338,7 +338,7 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
       for (int idim = 0; idim <AMREX_SPACEDIM; idim++) {
          edgeState[idim].define(amrex::convert(grids[lev],IntVect::TheDimensionVector(idim)),
 #ifdef PELELM_USE_MF
-				dmap[lev], NUM_SPECIES+4, nGrow, MFInfo(), Factory(lev));
+				dmap[lev], NUM_SPECIES+3+NUMMFVAR, nGrow, MFInfo(), Factory(lev));
 #else
 				dmap[lev], NUM_SPECIES+3, nGrow, MFInfo(), Factory(lev));
 #endif
@@ -667,7 +667,7 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
          bool fluxes_are_area_weighted = false;
          bool knownEdgeState = false;
 
-	 HydroUtils::ComputeFluxesOnBoxFromState(bx, 1, mfi,
+	 HydroUtils::ComputeFluxesOnBoxFromState(bx, NUMMFVAR, mfi,
                                                  rhoY_arr,
                                                  AMREX_D_DECL(fx,fy,fz),
                                                  AMREX_D_DECL(edgex,edgey,edgez), knownEdgeState,
@@ -800,7 +800,7 @@ void PeleLM::computeScalarAdvTerms(std::unique_ptr<AdvanceAdvData> &advData)
                         divu,
                         GetArrOfConstPtrs(fluxes[lev]), NUM_SPECIES+1,
                         GetArrOfConstPtrs(fluxes[lev]), NUM_SPECIES+1, // This will not be used since none of rhoY/rhoH in convective
-                        1,
+                        NUMMFVAR,
                         AdvTypeMF_d.dataPtr(),
                         geom[lev], -1.0,
                         fluxes_are_area_weighted);

@@ -436,14 +436,7 @@ void PeleLM::updateMF(std::unique_ptr<AdvanceAdvData> &advData,
       amrex::ParallelFor(bx, 1, [old_arr, new_arr, a_of_s, dnmf, dnp1kmf, fMF, dhatmf, dt=m_dt]
       AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
       {
-	//Print() << new_arr(i,j,k,0) << std::endl;
-	//Print() << a_of_s(i,j,k,0) << std::endl;
-	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * (a_of_s(i,j,k,n));
-	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * a_of_s(i,j,k);
-	//new_arr(i,j,k) = fMF(i,j,k) + dt * dnp1kmf(i,j,k);
-	//new_arr(i,j,k) = old_arr(i,j,k) + fMF(i,j,k) * dt + dt * dhatmf(i,j,k); // martin: this is not right, where is D added normally?
-	// update MF part is not really necessary
-	new_arr(i,j,k) = old_arr(i,j,k) + fMF(i,j,k) * dt;
+	new_arr(i,j,k,n) = old_arr(i,j,k,n) + fMF(i,j,k,n) * dt;
       });
     }
   }

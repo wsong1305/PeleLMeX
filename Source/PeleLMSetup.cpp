@@ -574,6 +574,7 @@ void PeleLM::readParameters() {
 #endif
 #ifdef PELELM_USE_MF
 Print() << "WILL USE MF" << std::endl;
+Print() << "NUM MF" << NUMMFVAR << std::endl;
 #endif
 }
 
@@ -673,9 +674,12 @@ void PeleLM::variablesSetup() {
       setSootIndx();
 #endif
 #ifdef PELELM_USE_MF
-   std::string name = "rhoMixFrac";
-   Print() << "adding " << name << std::endl;
-   stateComponents.emplace_back(FIRSTMFVAR,name);
+      for (int m = 0; m < NUMMFVAR; m++) {
+	std::string name = "rhoMixFrac" + std::to_string(m);;
+	Print() << "adding " << name << std::endl;
+	stateComponents.emplace_back(FIRSTMFVAR+m,name);
+	Print() << "ADDING " << name << std::endl;
+      }
 #endif
    }
 
@@ -736,8 +740,10 @@ void PeleLM::variablesSetup() {
       }
 #endif
 #ifdef PELELM_USE_MF
-        m_AdvTypeState[FIRSTMFVAR] = 1;
-        m_DiffTypeState[FIRSTMFVAR] = 1;
+      for (int m = 0; m < NUMMFVAR; m++) {
+	m_AdvTypeState[FIRSTMFVAR+m] = 1;
+	m_DiffTypeState[FIRSTMFVAR+m] = 1;
+      }
 #endif
    }
 
@@ -988,7 +994,7 @@ void PeleLM::evaluateSetup()
    // scalar diffusion term
    {
 #ifdef PELELM_USE_MF
-      Vector<std::string> var_names(NUM_SPECIES+3);
+      Vector<std::string> var_names(NUM_SPECIES+2+NUMMFVAR);
 #else
       Vector<std::string> var_names(NUM_SPECIES+2);
 #endif
@@ -997,11 +1003,11 @@ void PeleLM::evaluateSetup()
       }
       var_names[NUM_SPECIES] = "D(RhoH)";
       var_names[NUM_SPECIES+1] = "D(Temp)";
-#ifdef PELELM_USE_MF
-      var_names[NUM_SPECIES+2] = "D(MixFrac)";
-#endif
+      //#ifdef PELELM_USE_MF
+      //var_names[NUM_SPECIES+2] = "D(MixFrac)";
+      //#endif
 #ifdef PELELM_USE_MF      
-      evaluate_lst.add("diffTerm",IndexType::TheCellType(),NUM_SPECIES+3,var_names,the_same_box);
+      evaluate_lst.add("diffTerm",IndexType::TheCellType(),NUM_SPECIES+2+NUMMFVAR,var_names,the_same_box);
 #else
       evaluate_lst.add("diffTerm",IndexType::TheCellType(),NUM_SPECIES+2,var_names,the_same_box);
 #endif      

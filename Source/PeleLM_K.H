@@ -116,7 +116,9 @@ getTransportCoeff(int i, int j, int k,
    amrex::Real cpmix = 0.0_rt;
    eos.TY2Cp(T(i,j,k), y, cpmix);
    cpmix *= 1.0e-4_rt;
-   rhoDi(i,j,k,NUM_SPECIES+2) = lambda(i,j,k) / cpmix;
+   for (int m = 0; m < NUMMFVAR; m++) { 
+     rhoDi(i,j,k,NUM_SPECIES+2+m) = lambda(i,j,k) / cpmix;
+   }
 #endif
 }
 
@@ -790,10 +792,9 @@ buildAdvectionForcing(int i, int j, int k,
    forceT(i,j,k) *= rhoinv * cpmixinv;
 
 #ifdef PELELM_USE_MF
-   //martin: test
-   forceMF(i,j,k) = dn(i,j,k,NUM_SPECIES+2);
-   //forceMF(i,j,k) = 0.;
-   //if (i == 15 && j == 15 && k == 15) {amrex::Print() << "dn " << dn(i,j,k,NUM_SPECIES+2) << " " << ddn(i,j,k) << std::endl;}
+   for (int m = 0; m < NUMMFVAR; m++) {
+     forceMF(i,j,k,m) = dn(i,j,k,NUM_SPECIES+2+m);
+   }
 #endif
 }
 
@@ -832,11 +833,9 @@ buildDiffusionForcing(int i, int j, int k,
                              - dnp1k(i,j,k,NUM_SPECIES) - ddnp1k(i,j,k) );
 
 #ifdef PELELM_USE_MF
-   //martin: there is an issue with forcing here (currently only does something reasonable if forceMF = 0 and not rhoY(i,j,k) = force(i,j,k); in differentialDiffusionUpdate)
-   //martin: test
-   forceMF(i,j,k) = a(i,j,k,NUM_SPECIES+3) + 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
-   //forceMF(i,j,k) = 0.5_rt * ( dnmf(i,j,k) - dnp1kmf(i,j,k) );
-   //forceMF(i,j,k) = 0.;//a(i,j,k,NUM_SPECIES+1);
+   for (int m = 0; m < NUMMFVAR; m++) {
+     forceMF(i,j,k,m) = a(i,j,k,NUM_SPECIES+3+m) + 0.5_rt * ( dnmf(i,j,k,m) - dnp1kmf(i,j,k,m) );
+   }
 #endif   
    
    if ( closed_chamber == 1 ) forceT(i,j,k) += dp0dt;

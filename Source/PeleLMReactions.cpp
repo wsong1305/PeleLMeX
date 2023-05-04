@@ -457,7 +457,9 @@ void PeleLM::getScalarReactForce(std::unique_ptr<AdvanceAdvData> &advData)
             }
             extF_rhoH(i,j,k) = (rhoH_n(i,j,k) - rhoH_o(i,j,k)) * dtinv;
 #ifdef PELELM_USE_MF
-	    extF_rhoMF(i,j,k) = (rhoMF_n(i,j,k) - rhoMF_o(i,j,k)) * dtinv;
+	    for (int m = 0; m < NUMMFVAR; m++) {
+	      extF_rhoMF(i,j,k,m) = (rhoMF_n(i,j,k,m) - rhoMF_o(i,j,k,m)) * dtinv;
+	    }
 #endif	    
          });
       }

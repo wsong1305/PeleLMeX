@@ -24,7 +24,7 @@
 #endif
 #ifdef PELELM_USE_MF
 #define FIRSTMFVAR (RHORT + NUMEFIELD + NUMSOOTVAR + 1)
-#define NUMMFVAR 1
+#define NUMMFVAR NUM_MF
 #else
 #define NUMMFVAR 0
 #endif
