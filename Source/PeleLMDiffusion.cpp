@@ -1479,9 +1479,6 @@ void PeleLM::getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
                fY(i,j,k,n) += extRhoY(i,j,k,n);
             }
             fT(i,j,k) += extRhoH(i,j,k);
-#ifdef PELELM_USE_MF
-	    // need to add source to fMF ? should not need it
-#endif	    
          });
       }
    }

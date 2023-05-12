@@ -575,6 +575,9 @@ void PeleLM::readParameters() {
 #ifdef PELELM_USE_MF
 Print() << "WILL USE MF" << std::endl;
 Print() << "NUM MF" << NUMMFVAR << std::endl;
+#ifdef PELELM_USE_AGE
+Print() << "WILL USE AGE" << std::endl;
+#endif
 #endif
 }
 

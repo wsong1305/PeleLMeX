@@ -27,8 +27,8 @@ amr.blocking_factor = 16               # block factor in grid generation (min bo
 amr.max_grid_size   = 64               # max box size
 
 #----------------------TIME STEPING CONTROL----------------------
-amr.max_step            = 100          # maximum number of time steps
-amr.stop_time           = 0.01         # final physical time
+amr.max_step            = 100           # maximum number of time steps
+amr.stop_time           = 0.01          # final physical time
 amr.cfl              = 0.3              # cfl number for hyperbolic system
 amr.dt_shrink      = 0.1                # scale back initial timestep
 amr.change_max       = 1.1              # max timestep size increase

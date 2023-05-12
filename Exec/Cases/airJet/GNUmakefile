@@ -22,7 +22,8 @@ USE_HIP         = FALSE
 USE_EFIELD      = FALSE
 USE_TURBINFLOW  = TRUE
 USE_MF		= TRUE
-NUM_MF		= 2
+NUM_MF		= 3
+USE_AGE         = TRUE
 
 # PelePhysics
 Chemistry_Model = air

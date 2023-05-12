@@ -795,6 +795,9 @@ buildAdvectionForcing(int i, int j, int k,
    for (int m = 0; m < NUMMFVAR; m++) {
      forceMF(i,j,k,m) = dn(i,j,k,NUM_SPECIES+2+m);
    }
+   //#ifdef PELELM_USE_AGE
+   //forceMF(i,j,k,NUMMFVAR-1) += r(i,j,k,NUM_SPECIES);
+   //#endif   
 #endif
 }
 
@@ -836,6 +839,9 @@ buildDiffusionForcing(int i, int j, int k,
    for (int m = 0; m < NUMMFVAR; m++) {
      forceMF(i,j,k,m) = a(i,j,k,NUM_SPECIES+3+m) + 0.5_rt * ( dnmf(i,j,k,m) - dnp1kmf(i,j,k,m) );
    }
+   //#ifdef PELELM_USE_AGE
+   //forceMF(i,j,k,NUMMFVAR-1) += r(i,j,k,NUM_SPECIES);
+   //#endif
 #endif   
    
    if ( closed_chamber == 1 ) forceT(i,j,k) += dp0dt;
