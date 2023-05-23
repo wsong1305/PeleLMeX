@@ -28,8 +28,7 @@ amr.stop_time           = 0.001            # final physical time
 amr.cfl              = 0.5              # cfl number for hyperbolic system
 amr.dt_shrink        = 0.1            # scale back initial timestep
 amr.change_max       = 1.1              # max timestep size increase
-ns.init_dt          = 1.e-6
-#ns.fixed_dt         = 6e-7
+amr.init_dt          = 1.e-6
 
 #-------------------------IO CONTROL----------------------------
 amr.checkpoint_files_output = 1
@@ -50,7 +49,7 @@ prob.v_in      = 28.0
 prob.v_co      = 1.0
 prob.D         = 1.7e-4
 prob.fu_spec   = NC12H26
-prob.fu_ox_spec= O2
+prob.fu_ox_spec= CH4
 prob.Y_O2_ox   = 0.164305
 prob.Y_fu_ox   = 0.0205938
 prob.T_ox      = 900.
