@@ -97,6 +97,11 @@ particles.use_splash_model = false
 particles.fuel_boil_temp = 448. # K (at atmospheric conditions)
 particles.POSF10325_psat = 4.31794734997 2031.77550032 8.99646688163 1.E5
 particles.POSF10325_rho = 1018.39628396 -0.7476600525 2.92571800481e-06 -1.88946694554e-09
+#new inputs
+particles.POSF10325_crit_temp = 667.
+particles.POSF10325_boil_temp = 448.
+particles.POSF10325_cp = 2000. # Cp at fuel_ref_temp
+particles.POSF10325_latent = 379800.
 
 # --------------- Mixture fraction definition -----------------------
 peleLM.fuel_name = POSF10325
@@ -121,7 +126,7 @@ EB.loc_x            = 12.5e-3
 EB.loc_y            = 0.0e-3
 
 #-------------------------IO CONTROL----------------------------
-amr.restart             = chk43300
+amr.restart             = chk44700
 # amr.restart             = solution_2AMRlevel_flame_2levelsEB/chk20600
 # amr.initDataPlt         = non_reactive_air/plt02744
 # amr.initDataPlt         = non_reactive_spray/plt02528
@@ -133,7 +138,7 @@ amr.plot_files_output   = 1
 amr.plot_file           = plt          # root name of plot file
 # amr.plot_int            = 5          # number of timesteps between plot files
 amr.plot_per            = 2.e-4
-amr.derive_plot_vars    = mag_vort avg_pressure mass_fractions mixture_fraction
+amr.derive_plot_vars    = mag_vort mag_vel avg_pressure mass_fractions mixture_fraction
 amr.grid_log            = grdlog       # name of grid logging file
 
 #-------------------------PeleLM CONTROL----------------------------
@@ -203,12 +208,12 @@ cvode.solve_type = magma_direct     # CVODE Linear solve type (for Newton direct
 #fabarray.mfiter_tile_size = 512 512 512
 
 #--------------------------DEBUG/REGTESTS INPUTS-----------------------------
-amrex.regtest_reduction = 1
-amrex.fpe_trap_invalid  = 1
-amrex.fpe_trap_zero     = 1
-amrex.fpe_trap_overflow = 1
+amrex.regtest_reduction = 0
+amrex.fpe_trap_invalid  = 0
+amrex.fpe_trap_zero     = 0
+amrex.fpe_trap_overflow = 0
 amrex.abort_on_out_of_gpu_memory=1
-amrex.the_arena_is_managed = 1
+amrex.the_arena_is_managed = 0
 
 peleLM.deltaT_verbose = 0
 peleLM.deltaT_crashIfFailing = 0
