@@ -959,8 +959,12 @@ class PeleLM : public amrex::AmrCore {
 #ifdef PELE_USE_EFIELD
    void fillPatchPhiV(const PeleLM::TimeStamp &a_time);
 #endif
-
    // FillPatch and return a MF
+#ifdef PELELM_USE_MF
+   void fillPatchMF(const PeleLM::TimeStamp &a_time);
+#endif
+  
+   // FillPatch and return a state MF
    std::unique_ptr<amrex::MultiFab>
    fillPatchState(int lev, amrex::Real a_time, int nGrow);
    std::unique_ptr<amrex::MultiFab>
@@ -972,6 +976,10 @@ class PeleLM : public amrex::AmrCore {
    void fillpatch_species(int lev, amrex::Real a_time, amrex::MultiFab& a_rhoY, int rhoY_comp, int nGhost);
    void fillpatch_temp(int lev, amrex::Real a_time,
                        amrex::MultiFab& a_temp, int temp_comp, int nGhost);
+#ifdef PELELM_USE_MF
+  void fillpatch_mf(int lev, amrex::Real a_time,
+                       amrex::MultiFab& a_mf, int mf_comp, int nGhost);
+#endif  
    void fillpatch_divu(int lev, amrex::Real a_time, amrex::MultiFab& a_divu, int nGhost);
    void fillpatch_gradp(int lev, amrex::Real a_time, amrex::MultiFab& a_gp, int nGhost);
    void fillpatch_reaction(int lev, amrex::Real a_time, amrex::MultiFab& a_I_R, int nGhost);
@@ -1285,6 +1293,11 @@ class PeleLM : public amrex::AmrCore {
    void updateDensity(std::unique_ptr<AdvanceAdvData> &advData);
    void updateScalarComp(std::unique_ptr<AdvanceAdvData> &advData, int state_comp, int ncomp);
 
+#ifdef PELELM_USE_MF
+  void updateMF(std::unique_ptr<AdvanceAdvData> &advData, std::unique_ptr<AdvanceDiffData> &diffData);
+  void checkMFstuff(std::unique_ptr<AdvanceAdvData> &advData, std::unique_ptr<AdvanceDiffData> &diffData);
+#endif
+  
    void getScalarDiffForce(std::unique_ptr<AdvanceAdvData> &advData,
                            std::unique_ptr<AdvanceDiffData> &diffData);
 
@@ -1409,7 +1422,11 @@ class PeleLM : public amrex::AmrCore {
 #ifdef PELE_USE_EFIELD
       return NUM_SPECIES+2;
 #else
+#ifdef PELELM_USE_MF
+      return NUM_SPECIES+2;
+#else
       return NUM_SPECIES+1;
+#endif
 #endif
    }
 
@@ -1434,6 +1451,9 @@ class PeleLM : public amrex::AmrCore {
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getVelocityVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getDensityVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getSpeciesVect(const PeleLM::TimeStamp &a_time);
+#ifdef PELELM_USE_MF
+   amrex::Vector<std::unique_ptr<amrex::MultiFab> > getMFVect(const PeleLM::TimeStamp &a_time);
+#endif
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getRhoHVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<std::unique_ptr<amrex::MultiFab> > getTempVect(const PeleLM::TimeStamp &a_time);
    amrex::Vector<amrex::MultiFab* > getDivUVect(const PeleLM::TimeStamp &a_time);

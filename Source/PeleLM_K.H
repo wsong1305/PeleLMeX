@@ -112,6 +112,14 @@ getTransportCoeff(int i, int j, int k,
    }
    lambda(i,j,k) = lambda_cgs * 1.0e-5_rt;
    mu(i,j,k) = mu_cgs * 1.0e-1_rt;
+#ifdef PELELM_USE_MF
+   amrex::Real cpmix = 0.0_rt;
+   eos.TY2Cp(T(i,j,k), y, cpmix);
+   cpmix *= 1.0e-4_rt;
+   for (int m = 0; m < NUMMFVAR; m++) { 
+     rhoDi(i,j,k,NUM_SPECIES+2+m) = lambda(i,j,k) / cpmix;
+   }
+#endif
 }
 
 AMREX_GPU_DEVICE
@@ -408,6 +416,14 @@ intFluxDivergence_K(int i, int j, int k,
    amrex::Real factor = scaling / vol(i,j,k);
 
    for (int n = 0; n < ncomp; n++) {
+     //      if (n == ncomp-1)
+     //	{
+     //	  amrex::Print() << i << " " << j << " " << k << std::endl;
+     //	  amrex::Print() << n << std::endl;
+     //	  amrex::Print() << div(i,j,k,n) << std::endl;
+     //	  //amrex::Print() << fluxX(i+1,j,k,n) << std::endl;
+     //	  amrex::Print() << "TEST" << std::endl;
+     //	}
       div(i,j,k,n) = AMREX_D_TERM (  (   areax * fluxX(i+1,j,k,n)
                                        - areax * fluxX(i  ,j,k,n) ),
                                    + (   areay * fluxY(i,j+1,k,n)
@@ -734,6 +750,9 @@ buildAdvectionForcing(int i, int j, int k,
                       amrex::Array4<const amrex::Real> const& rho,
                       amrex::Array4<const amrex::Real> const& rhoY,
                       amrex::Array4<const amrex::Real> const& T,
+#ifdef PELELM_USE_MF
+                      amrex::Array4<const amrex::Real> const& rhoMF,
+#endif
                       amrex::Array4<const amrex::Real> const& dn,
                       amrex::Array4<const amrex::Real> const& ddn,
                       amrex::Array4<const amrex::Real> const& r,
@@ -743,7 +762,11 @@ buildAdvectionForcing(int i, int j, int k,
                       int                              const& closed_chamber,
                       int                                     do_react,
                       amrex::Array4<      amrex::Real> const& forceY,
-                      amrex::Array4<      amrex::Real> const& forceT) noexcept
+		      amrex::Array4<      amrex::Real> const& forceT
+#ifdef PELELM_USE_MF
+                      ,amrex::Array4<      amrex::Real> const& forceMF
+#endif
+		      ) noexcept
 {
    using namespace amrex::literals;
 
@@ -772,6 +795,15 @@ buildAdvectionForcing(int i, int j, int k,
    eos.TY2Cp(T(i,j,k), y, cpmix);
    amrex::Real cpmixinv = 1.0_rt / cpmix * 1.0e4_rt;                 // CGS -> MKS conversion
    forceT(i,j,k) *= rhoinv * cpmixinv;
+
+#ifdef PELELM_USE_MF
+   for (int m = 0; m < NUMMFVAR; m++) {
+     forceMF(i,j,k,m) = dn(i,j,k,NUM_SPECIES+2+m);
+   }
+   //#ifdef PELELM_USE_AGE
+   //forceMF(i,j,k,NUMMFVAR-1) += r(i,j,k,NUM_SPECIES);
+   //#endif   
+#endif
 }
 
 AMREX_GPU_DEVICE
@@ -782,13 +814,22 @@ buildDiffusionForcing(int i, int j, int k,
                       amrex::Array4<const amrex::Real> const& ddn,
                       amrex::Array4<const amrex::Real> const& dnp1k,
                       amrex::Array4<const amrex::Real> const& ddnp1k,
+#ifdef PELELM_USE_MF
+                      amrex::Array4<const amrex::Real> const& dnmf,
+                      amrex::Array4<const amrex::Real> const& dnp1kmf,		      
+#endif
                       amrex::Array4<const amrex::Real> const& r,
                       amrex::Array4<const amrex::Real> const& a,
                       amrex::Real                      const& dp0dt,
                       int                              const& closed_chamber,
                       int                                     do_react,
                       amrex::Array4<      amrex::Real> const& forceY,
-                      amrex::Array4<      amrex::Real> const& forceT) noexcept
+                      amrex::Array4<      amrex::Real> const& forceT
+#ifdef PELELM_USE_MF
+		      ,amrex::Array4<      amrex::Real> const& forceMF
+#else
+#endif		      
+		      ) noexcept
 {
    using namespace amrex::literals;
 
@@ -799,6 +840,15 @@ buildDiffusionForcing(int i, int j, int k,
    forceT(i,j,k) = a(i,j,k,NUM_SPECIES) + 0.5_rt * (  dn(i,j,k,NUM_SPECIES) + ddn(i,j,k)
                              - dnp1k(i,j,k,NUM_SPECIES) - ddnp1k(i,j,k) );
 
+#ifdef PELELM_USE_MF
+   for (int m = 0; m < NUMMFVAR; m++) {
+     forceMF(i,j,k,m) = a(i,j,k,NUM_SPECIES+3+m) + 0.5_rt * ( dnmf(i,j,k,m) - dnp1kmf(i,j,k,m) );
+   }
+   //#ifdef PELELM_USE_AGE
+   //forceMF(i,j,k,NUMMFVAR-1) += r(i,j,k,NUM_SPECIES);
+   //#endif
+#endif   
+   
    if ( closed_chamber == 1 ) forceT(i,j,k) += dp0dt;
 }
 

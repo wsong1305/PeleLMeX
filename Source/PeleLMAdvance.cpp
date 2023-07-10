@@ -327,6 +327,7 @@ void PeleLM::oneSDC(int sdcIter,
    // Compute and update passive advective terms
    computePassiveAdvTerms(advData, FIRSTSOOT, NUMSOOTVAR);
 #endif
+   
    // Get scalar advection SDC forcing
    getScalarAdvForce(advData,diffData);
 
@@ -354,6 +355,7 @@ void PeleLM::oneSDC(int sdcIter,
    if (m_verbose > 1) {
       ScalDiffStart = ParallelDescriptor::second();
    }
+   
    // Get scalar diffusion SDC RHS (stored in Forcing)
    getScalarDiffForce(advData,diffData);
 
@@ -386,6 +388,11 @@ void PeleLM::oneSDC(int sdcIter,
    // Get external forcing for chemistry
    getScalarReactForce(advData);
 
+   //martin: only test
+#ifdef PELELM_USE_MF
+   updateMF(advData,diffData);
+#endif
+
    // Integrate chemistry
    advanceChemistry(advData);
    if (m_verbose > 1) {
@@ -405,3 +412,78 @@ void PeleLM::oneSDC(int sdcIter,
    floorSpecies(AmrNewTime);
    setThermoPress(AmrNewTime);
 }
+
+#ifdef PELELM_USE_MF
+void PeleLM::updateMF(std::unique_ptr<AdvanceAdvData> &advData,
+		      std::unique_ptr<AdvanceDiffData> &diffData)
+{
+  for (int lev = 0; lev <= finest_level; ++lev) {
+    auto ldataOld_p = getLevelDataPtr(lev,AmrOldTime);
+    auto ldataNew_p = getLevelDataPtr(lev,AmrNewTime);
+    auto ldataR_p   = getLevelDataReactPtr(lev);
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+    for (MFIter mfi(ldataNew_p->state,TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+      Box const& bx = mfi.tilebox();
+      auto const& old_arr  = ldataOld_p->state.const_array(mfi,FIRSTMFVAR);
+      auto const& new_arr  = ldataNew_p->state.array(mfi,FIRSTMFVAR);
+      auto const& density  = ldataNew_p->state.array(mfi,DENSITY);
+      auto const& a_of_s    = advData->AofS[lev].const_array(mfi,FIRSTMFVAR);
+      auto const& dnmf    = diffData->Dn[lev].const_array(mfi,NUM_SPECIES+2);
+      auto const& dnp1kmf = diffData->Dnp1[lev].const_array(mfi,NUM_SPECIES+2);
+      auto const& dhatmf = diffData->Dhat[lev].const_array(mfi,NUM_SPECIES+2);
+      auto const& fMF      = advData->Forcing[lev].array(mfi,NUM_SPECIES+1);
+      amrex::ParallelFor(bx, [old_arr, new_arr, a_of_s, dnmf, dnp1kmf, fMF, dhatmf, density, dt=m_dt]
+      AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+      {
+	for (int n = 0; n < NUMMFVAR; n++) {
+	  new_arr(i,j,k,n) = old_arr(i,j,k,n) + fMF(i,j,k,n) * dt;
+	}
+#ifdef PELELM_USE_AGE
+	// does that source term need to be added to forcing for adv/diff?
+	new_arr(i,j,k,NUMMFVAR-1) += density(i,j,k)*dt;
+	//agedot(i,j,k) = 0.0;//density(i,j,k)*dt;
+#endif
+      });
+    }
+  }
+
+  averageDown(AmrNewTime, FIRSTMFVAR, NUMMFVAR);
+}
+
+void PeleLM::checkMFstuff(std::unique_ptr<AdvanceAdvData> &advData,
+		      std::unique_ptr<AdvanceDiffData> &diffData)
+{
+  for (int lev = 0; lev <= finest_level; ++lev) {
+    auto ldataOld_p = getLevelDataPtr(lev,AmrOldTime);
+    auto ldataNew_p = getLevelDataPtr(lev,AmrNewTime);
+    //auto const& dma = ldata_p->diff_cc.arrays()
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+    for (MFIter mfi(ldataNew_p->state,TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+      Box const& bx = mfi.tilebox();
+      auto const& old_arr  = ldataOld_p->state.const_array(mfi,FIRSTMFVAR);
+      auto const& new_arr  = ldataNew_p->state.array(mfi,FIRSTMFVAR);
+      auto const& a_of_s    = advData->AofS[lev].const_array(mfi,FIRSTMFVAR);
+      //auto const& diffcc    = ldataOld_p->diff_cc.arrays();
+      auto const& diffcc    = ldataOld_p->diff_cc.const_array(mfi,NUM_SPECIES+2);
+      amrex::ParallelFor(bx, [old_arr, new_arr, a_of_s, diffcc, dt=m_dt]
+      AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+      {
+	//Print() << new_arr(i,j,k,0) << std::endl;
+	//Print() << diffcc(i,j,k,0) << std::endl;
+	//Print() << a_of_s(i,j,k,0) << std::endl;
+	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + dt * (a_of_s(i,j,k,n));
+	//new_arr(i,j,k,n) = old_arr(i,j,k,n) + .001;
+	if (i == 15 && j == 15 && k == 15){
+	  Print() << i << " " << j << " " << k << " " << new_arr(i,j,k) << std::endl;
+	}
+      });
+    }
+  }
+
+  averageDown(AmrNewTime, FIRSTMFVAR, 1);
+}
+#endif

@@ -49,7 +49,13 @@ ifeq ($(USE_SOOT), TRUE)
    DEFINES += -DNUM_SOOT_MOMENTS=$(NUM_SOOT_MOMENTS)
    LMdirs += Source/Soot
 endif
-
+ifeq ($(USE_MF), TRUE)
+DEFINES += -DPELELM_USE_MF
+DEFINES += -DNUM_MF=$(NUM_MF)
+endif
+ifeq ($(USE_AGE), TRUE)
+DEFINES += -DPELELM_USE_AGE
+endif
 
 Bpack += $(foreach dir, $(LMdirs), $(PELELMEX_HOME)/$(dir)/Make.package)
 Blocs += $(foreach dir, $(LMdirs), $(PELELMEX_HOME)/$(dir))

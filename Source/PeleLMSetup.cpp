@@ -556,6 +556,13 @@ void PeleLM::readParameters() {
    }
    soot_model->readSootParams();
 #endif
+#ifdef PELELM_USE_MF
+Print() << "WILL USE MF" << std::endl;
+Print() << "NUM MF" << NUMMFVAR << std::endl;
+#ifdef PELELM_USE_AGE
+Print() << "WILL USE AGE" << std::endl;
+#endif
+#endif
 }
 
 void PeleLM::readIOParameters() {
@@ -654,6 +661,14 @@ void PeleLM::variablesSetup() {
       }
       setSootIndx();
 #endif
+#ifdef PELELM_USE_MF
+      for (int m = 0; m < NUMMFVAR; m++) {
+	std::string name = "rhoMixFrac" + std::to_string(m);;
+	Print() << "adding " << name << std::endl;
+	stateComponents.emplace_back(FIRSTMFVAR+m,name);
+	Print() << "ADDING " << name << std::endl;
+      }
+#endif
    }
 
    if (m_nAux > 0) {
@@ -710,6 +725,12 @@ void PeleLM::variablesSetup() {
       for (int mom = 0; mom < NUMSOOTVAR; mom++) {
         m_AdvTypeState[FIRSTSOOT+mom] = 0;
         m_DiffTypeState[FIRSTSOOT+mom] = 0;
+      }
+#endif
+#ifdef PELELM_USE_MF
+      for (int m = 0; m < NUMMFVAR; m++) {
+	m_AdvTypeState[FIRSTMFVAR+m] = 1;
+	m_DiffTypeState[FIRSTMFVAR+m] = 1;
       }
 #endif
    }
@@ -963,13 +984,24 @@ void PeleLM::evaluateSetup()
 
    // scalar diffusion term
    {
+#ifdef PELELM_USE_MF
+      Vector<std::string> var_names(NUM_SPECIES+2+NUMMFVAR);
+#else
       Vector<std::string> var_names(NUM_SPECIES+2);
+#endif
       for (int n = 0 ; n < NUM_SPECIES; n++) {
          var_names[n] = "D("+spec_names[n]+")";
       }
       var_names[NUM_SPECIES] = "D(RhoH)";
       var_names[NUM_SPECIES+1] = "D(Temp)";
+      //#ifdef PELELM_USE_MF
+      //var_names[NUM_SPECIES+2] = "D(MixFrac)";
+      //#endif
+#ifdef PELELM_USE_MF      
+      evaluate_lst.add("diffTerm",IndexType::TheCellType(),NUM_SPECIES+2+NUMMFVAR,var_names,the_same_box);
+#else
       evaluate_lst.add("diffTerm",IndexType::TheCellType(),NUM_SPECIES+2,var_names,the_same_box);
+#endif      
    }
 
    // advection terms

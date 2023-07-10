@@ -164,6 +164,12 @@ void PeleLM::WritePlotFile() {
         plt_VarsName.push_back(sootname);
       }
 #endif
+#ifdef PELELM_USE_MF
+      for (int m = 0; m < NUMMFVAR; m++) {
+	std::string name = "rhoMixFrac"+std::to_string(m);
+	plt_VarsName.push_back(name);
+      }
+#endif
       if (m_has_divu) {
          plt_VarsName.push_back("divu");
       }
@@ -258,6 +264,10 @@ void PeleLM::WritePlotFile() {
 #ifdef PELELM_USE_SOOT
          MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->state, FIRSTSOOT, cnt, NUMSOOTVAR, 0);
          cnt += NUMSOOTVAR;
+#endif
+#ifdef PELELM_USE_MF
+         MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->state, FIRSTMFVAR, cnt, NUMMFVAR, 0);
+         cnt += NUMMFVAR;
 #endif
          if (m_has_divu) {
             MultiFab::Copy(mf_plt[lev], m_leveldata_new[lev]->divu, 0, cnt, 1, 0);
@@ -711,6 +721,9 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
 #ifdef PELELM_USE_SOOT
    int inSoot = -1;
 #endif
+#ifdef PELELM_USE_MF
+   int inMF = -1;
+#endif
    for (int i = 0; i < plt_vars.size(); ++i) {
       std::string firstChars = plt_vars[i].substr(0, 2);
 
@@ -731,6 +744,9 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
 #endif
 #ifdef PELELM_USE_SOOT
       if (plt_vars[i] == "soot_N")          inSoot = i;
+#endif
+#ifdef PELELM_USE_MF
+      if (plt_vars[i] == "rhoMixFrac0")          inMF = i;
 #endif
    }
    if ( idY < 0 ) {
@@ -835,6 +851,11 @@ void PeleLM::initLevelDataFromPlt(int a_lev,
        }
      }
    }
+#endif
+#ifdef PELE_USE_MF
+   // mixFrac
+   pltData.fillPatchFromPlt(a_lev, geom[a_lev], inNF, FIRSTMFVAR, NUMMFVAR,
+                            ldata_p->state);
 #endif
    // Pressure and pressure gradients to zero
    ldata_p->press.setVal(0.0);

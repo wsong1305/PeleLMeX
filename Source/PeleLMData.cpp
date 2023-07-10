@@ -32,7 +32,11 @@ PeleLM::LevelData::LevelData(amrex::BoxArray const& ba,
       if (a_use_soret) {
          diff_cc.define (ba, dm, 2*NUM_SPECIES+2 , 1           , MFInfo(), factory);
       } else {
-         diff_cc.define (ba, dm, NUM_SPECIES+2 , 1           , MFInfo(), factory);
+#ifdef PELELM_USE_MF
+	diff_cc.define (ba, dm, NUM_SPECIES+2+NUMMFVAR , 1           , MFInfo(), factory);
+#else
+	diff_cc.define (ba, dm, NUM_SPECIES+2 , 1           , MFInfo(), factory);
+#endif
       }
 
 #ifdef PELE_USE_EFIELD
@@ -90,7 +94,11 @@ PeleLM::AdvanceDiffData::AdvanceDiffData(int a_finestLevel,
 
       // Define MFs
       for (int lev = 0; lev <= a_finestLevel; lev++ ) {
+#ifdef PELELM_USE_MF	
+         Dnp1[lev].define(ba[lev], dm[lev], NUM_SPECIES+2+NUMMFVAR , nGrowAdv, MFInfo(), *factory[lev]);
+#else
          Dnp1[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
+#endif
       }
    } else {
       // Resize Vectors
@@ -108,9 +116,15 @@ PeleLM::AdvanceDiffData::AdvanceDiffData(int a_finestLevel,
 
       // Define MFs
       for (int lev = 0; lev <= a_finestLevel; lev++ ) {
-         Dn[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
-         Dnp1[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
-         Dhat[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
+#ifdef PELELM_USE_MF
+	 Dn[lev].define(ba[lev], dm[lev], NUM_SPECIES+2+NUMMFVAR , nGrowAdv, MFInfo(), *factory[lev]);
+	 Dnp1[lev].define(ba[lev], dm[lev], NUM_SPECIES+2+NUMMFVAR , nGrowAdv, MFInfo(), *factory[lev]);
+	 Dhat[lev].define(ba[lev], dm[lev], NUM_SPECIES+2+NUMMFVAR , nGrowAdv, MFInfo(), *factory[lev]);
+#else
+	 Dn[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
+	 Dnp1[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
+	 Dhat[lev].define(ba[lev], dm[lev], NUM_SPECIES+2 , nGrowAdv, MFInfo(), *factory[lev]);
+#endif
          if ( a_use_wbar ) {
             Dwbar[lev].define(ba[lev], dm[lev], NUM_SPECIES, nGrowAdv, MFInfo(), *factory[lev]);
             for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
@@ -165,8 +179,14 @@ PeleLM::AdvanceAdvData::AdvanceAdvData(int a_finestLevel,
          chi[lev].define(ba[lev], dm[lev], 1, 1, MFInfo(), *factory[lev]);
 #ifdef PELE_USE_EFIELD
          Forcing[lev].define(ba[lev], dm[lev], NUM_SPECIES+2, nGrowAdv, MFInfo(), *factory[lev]); // Species + TEMP + nE
+#
 #else
+#ifdef PELELM_USE_MF
+         Forcing[lev].define(ba[lev], dm[lev], NUM_SPECIES+1+NUMMFVAR, nGrowAdv, MFInfo(), *factory[lev]); // Species + TEMP + MF
+#else
+
          Forcing[lev].define(ba[lev], dm[lev], NUM_SPECIES+1, nGrowAdv, MFInfo(), *factory[lev]); // Species + TEMP
+#endif
 #endif
          mac_divu[lev].define(ba[lev], dm[lev], 1, nGrowAdv, MFInfo(), *factory[lev]);
       }
@@ -217,7 +237,11 @@ PeleLM::copyTransportOldToNew() {
    for (int lev = 0; lev <= finest_level; lev++ ) {
       MultiFab::Copy(m_leveldata_new[lev]->visc_cc,m_leveldata_old[lev]->visc_cc,0,0,1,1);
       if ( !m_incompressible ) {
+#ifdef PELELM_USE_MF         
+         MultiFab::Copy(m_leveldata_new[lev]->diff_cc,m_leveldata_old[lev]->diff_cc,0,0,NUM_SPECIES+2+NUMMFVAR,1);
+#else
          MultiFab::Copy(m_leveldata_new[lev]->diff_cc,m_leveldata_old[lev]->diff_cc,0,0,NUM_SPECIES+2,1);
+#endif
 #ifdef PELE_USE_EFIELD
          MultiFab::Copy(m_leveldata_new[lev]->diffE_cc,m_leveldata_old[lev]->diffE_cc,0,0,1,1);
          MultiFab::Copy(m_leveldata_new[lev]->mobE_cc,m_leveldata_old[lev]->mobE_cc,0,0,1,1);
@@ -230,6 +254,10 @@ PeleLM::copyTransportOldToNew() {
 void
 PeleLM::copyDiffusionOldToNew(std::unique_ptr<AdvanceDiffData> &diffData) {
    for (int lev = 0; lev <= finest_level; lev++ ) {
+#ifdef PELELM_USE_MF     
+      MultiFab::Copy(diffData->Dnp1[lev],diffData->Dn[lev],0,0,NUM_SPECIES+2+NUMMFVAR,m_nGrowAdv);
+#else
       MultiFab::Copy(diffData->Dnp1[lev],diffData->Dn[lev],0,0,NUM_SPECIES+2,m_nGrowAdv);
+#endif
    }
 }

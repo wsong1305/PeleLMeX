@@ -236,7 +236,7 @@ void PeleLM::intFluxDivergenceLevel(int lev,
                    auto const& fluxZ = a_fluxes[2]->const_array(mfi,flux_comp););
       auto const& divergence   = a_divergence.array(mfi,div_comp);
       auto const& vol          = volume.const_array(mfi);
-
+      
 #ifdef AMREX_USE_EB
       auto const& flagfab = ebfact.getMultiEBCellFlagFab()[mfi];
       auto const& flag    = flagfab.const_array();
@@ -315,6 +315,7 @@ void PeleLM::intFluxDivergenceLevel(int lev,
          }
       }
    }
+
 }
 
 void PeleLM::intFluxDivergenceLevelEB(int lev,
