@@ -346,7 +346,7 @@ void PeleLM::computeDifferentialDiffusionFluxes(const TimeStamp &a_time,
    				       GetVecOfConstPtrs(getMFVect(a_time)), 0,
    				       GetVecOfConstPtrs(getDensityVect(a_time)),
    				       GetVecOfConstPtrs(getDiffusivityVect(a_time)), NUM_SPECIES+2, bcRecMF, // martin: not sure here
-   				       NUMMFVAR, -1.0, do_avgDown);
+   				       NUMMFVAR, do_avgDown);
 #endif
    
    // Differential diffusion term: \sum_k ( h_k * \Flux_k )
