@@ -25,7 +25,7 @@ peleLM.hi_bc = NoSlipWallAdiab NoSlipWallAdiab Outflow
 amr.n_cell          = 128 128 256  # Level 0 number of cells in each direction
 peleLM.verbose      = 5            # amr verbosity level
 amr.verbose         = 3            # amr verbosity level
-amr.max_level       = 0            # maximum level number allowed
+amr.max_level       = 1            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2      # refinement ratio
 amr.regrid_int      = 10            # how often to regrid
 amr.n_error_buf     = 1 1 1 2      # number of buffer cells in error est
@@ -36,7 +36,7 @@ amr.max_grid_size   = 32           # maximum box size
 #----------------------- PROBLEM PARAMETERS --------------------
 prob.T_in = 388.0
 prob.P_mean = 101325.
-prob.U_b        = 0. # initial velocity z-velocity
+prob.U_b        = 5. # initial velocity z-velocity
 pmf.datafile    = "avgThermoState_Ub_10_7ms.csv"
 # pmf.datafile    = "avgThermoState_Ub_16ms.csv"
 
@@ -80,8 +80,8 @@ peleLM.floor_species = 1
 
 #--------------------REFINEMENT CONTROL------------------------
 
-peleLM.refine_EB_max_level = 0
-eb2.max_level_generation = 0
+peleLM.refine_EB_max_level = 1
+eb2.max_level_generation = 1
 peleLM.refine_EB_buffer = 3.0
 
 peleLM.refine_Zdir_max_level = 0
