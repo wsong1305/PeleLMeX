@@ -14,7 +14,7 @@ Then step into the *PeleLMeX* folder and add the main *PeleLMeX* repository as t
 
        git add remote upstream https://github.com/AMReX-Combustion/PeleLMeX
 
-At any point, you can update the `developement` branch of your local repository with changes implemented in the main *PeleLMeX* repo by pulling from `upstream` : 
+At any point, you can update the `development` branch of your local repository with changes implemented in the main *PeleLMeX* repo by pulling from `upstream` : 
 
         git checkout development
         git pull upstream development
@@ -35,7 +35,7 @@ You are now free to modify your own fork of *PeleLMeX*. To add a new feature to 
         git commit -m "Developed AmazingNewFeature"
 
 3. Alongside your development, regularly merge changes from the main repo `development` branch into your `AmazingNewFeature` branch,
-fix any conficts, and push your changes to your GitHub fork :
+fix any conflicts, and push your changes to your GitHub fork :
    
         git push -u origin AmazingNewFeature
 
