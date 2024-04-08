@@ -31,6 +31,8 @@ namespace pelelmex {
   enum BCTypeEB {
     wall_adiab = 0,
     wall_isot,
+    wallslip_adiab,
+    wallslip_isot,
     inflow
   };
 }
