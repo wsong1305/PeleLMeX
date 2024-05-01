@@ -1018,6 +1018,10 @@ public:
 #ifdef PELE_USE_EFIELD
   void fillPatchPhiV(const PeleLM::TimeStamp& a_time);
 #endif
+  // FillPatch and return a MF
+#ifdef PELELM_USE_MF
+  void fillPatchMF(const PeleLM::TimeStamp &a_time);
+#endif
 
   // FillPatch and return a MF
   std::unique_ptr<amrex::MultiFab>
@@ -1046,6 +1050,10 @@ public:
     amrex::MultiFab& a_temp,
     int temp_comp,
     int nGhost);
+#ifdef PELELM_USE_MF
+  void fillpatch_mf(
+    int lev, amrex::Real a_time, amrex::MultiFab& a_mf, int mf_comp, int nGhost);
+#endif
   void fillpatch_divu(
     int lev, amrex::Real a_time, amrex::MultiFab& a_divu, int nGhost);
   void fillpatch_gradp(
@@ -1419,6 +1427,11 @@ public:
   void updateScalarComp(
     std::unique_ptr<AdvanceAdvData>& advData, int state_comp, int ncomp);
 
+#ifdef PELELM_USE_MF
+  void updateMF(std::unique_ptr<AdvanceAdvData> &advData, std::unique_ptr<AdvanceDiffData> &diffData);
+  void checkMFstuff(std::unique_ptr<AdvanceAdvData> &advData, std::unique_ptr<AdvanceDiffData> &diffData);
+#endif
+
   void getScalarDiffForce(
     std::unique_ptr<AdvanceAdvData>& advData,
     std::unique_ptr<AdvanceDiffData>& diffData);
@@ -1557,7 +1570,11 @@ public:
 #ifdef PELE_USE_EFIELD
     return NUM_SPECIES + 2;
 #else
+#ifdef PELELM_USE_MF
+    return NUM_SPECIES + 2;
+#else
     return NUM_SPECIES + 1;
+#endif
 #endif
   }
 
@@ -1591,6 +1608,10 @@ public:
   getDensityVect(const PeleLM::TimeStamp& a_time);
   amrex::Vector<std::unique_ptr<amrex::MultiFab>>
   getSpeciesVect(const PeleLM::TimeStamp& a_time);
+#ifdef PELELM_USE_MF
+  amrex::Vector<std::unique_ptr<amrex::MultiFab>>
+  getMFVect(const PeleLM::TimeStamp &a_time);
+#endif
   amrex::Vector<std::unique_ptr<amrex::MultiFab>>
   getRhoHVect(const PeleLM::TimeStamp& a_time);
   amrex::Vector<std::unique_ptr<amrex::MultiFab>>
@@ -1790,7 +1811,6 @@ public:
   amrex::Real m_max_wall_time = -1.0;
   int m_nstep = -1;
   int m_max_step = -1;
-  int m_nfiles = 1;
 
   int m_regrid_int = -1;
   int m_regrid_on_restart = 0;
@@ -1807,9 +1827,6 @@ public:
     AMREX_D_DECL(0.0, 0.0, 0.0)};
   amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> m_background_gp{
     AMREX_D_DECL(0.0, 0.0, 0.0)};
-
-  int m_do_periodic_channel = 0;
-  int m_periodic_channel_dir = -1;
 
   // DivU ? default ON when not incompressible
   int m_has_divu = 1;
@@ -1830,13 +1847,8 @@ public:
 
   // Diffusion
   int m_unity_Le = 0;
-  int m_fixed_Pr = 0;
-  int m_fixed_Le = 0;
-
-  amrex::Real m_Lewis_inv = 1.0;
-  amrex::Real m_Prandtl_inv = 1.0 / 0.7;
   amrex::Real m_Schmidt_inv = 1.0 / 0.7;
-
+  amrex::Real m_Prandtl_inv = 1.0 / 0.7;
   int m_use_wbar = 1;
   int m_use_soret = 0;
 
